@@ -1,4 +1,3 @@
-
 .SUFFIXES:
 
 ifeq ($(strip $(PSL1GHT)),)
@@ -10,13 +9,14 @@ include $(PSL1GHT)/ppu_rules
 TARGET := blackout
 BUILD := build
 SOURCES := source
-INCLUDES :=
+INCLUDES := $(PS3DEV)/portlibs/ppu/include/freetype2
 
 TITLE := BLACKOUT: SIGNAL LOST
 APPID := BLSG00001
 
 CFLAGS := -O2 -Wall -mcpu=cell $(MACHDEP) $(INCLUDE)
 CXXFLAGS := $(CFLAGS)
+
 LDFLAGS := $(MACHDEP) -Wl,-Map,$(notdir $@).map
 
 LIBS := -lNoRSX -lgcm_sys -lrsx -lsysutil -lio -lm \
@@ -25,7 +25,17 @@ LIBS := -lNoRSX -lgcm_sys -lrsx -lsysutil -lio -lm \
 
 LIBDIRS := $(PORTLIBS)
 
-ifneq ($(BUILD),$(notdir $(CURDIR)))
+ifeq ($(BUILD),$(notdir $(CURDIR)))
+
+DEPENDS := $(OFILES:.o=.d)
+
+$(OUTPUT).self: $(OUTPUT).elf
+
+$(OUTPUT).elf: $(OFILES)
+
+-include $(DEPENDS)
+
+else
 
 export OUTPUT := $(CURDIR)/$(TARGET)
 export VPATH := $(foreach dir,$(SOURCES),$(CURDIR)/$(dir))
@@ -44,6 +54,7 @@ endif
 export OFILES := $(CPPFILES:.cpp=.o) $(CFILES:.c=.o)
 
 export INCLUDE := $(foreach dir,$(INCLUDES),-I$(CURDIR)/$(dir)) \
+                  -I$(PS3DEV)/portlibs/ppu/include/freetype2 \
                   $(foreach dir,$(LIBDIRS),-I$(dir)/include) \
                   $(LIBPSL1GHT_INC) \
                   -I$(CURDIR)/$(BUILD)
@@ -61,15 +72,5 @@ $(BUILD):
 
 clean:
 	@rm -rf $(BUILD) *.elf *.self *.pkg *.map
-
-else
-
-DEPENDS := $(OFILES:.o=.d)
-
-$(OUTPUT).self: $(OUTPUT).elf
-
-$(OUTPUT).elf: $(OFILES)
-
--include $(DEPENDS)
 
 endif
