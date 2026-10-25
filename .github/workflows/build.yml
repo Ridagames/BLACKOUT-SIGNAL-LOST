@@ -1,3 +1,4 @@
+
 name: Build PS3 Homebrew
 
 on:
@@ -26,21 +27,59 @@ jobs:
           test -f source/main.cpp
           test -s assets/USRDIR/BLACKOUT_MENU.png
 
-      - name: Build PS3 ELF and PKG
+      - name: Build and inspect PS3 files
         run: |
           set -eu
+
           docker run --rm \
             -v "$PWD:/workspace" \
             -w /workspace \
             hldtux/ps3dev:latest \
-            bash -lc 'set -eu; export PS3DEV=/usr/local/ps3dev; export PSL1GHT="$PS3DEV"; export PATH="$PS3DEV/bin:$PS3DEV/ppu/bin:$PS3DEV/spu/bin:$PATH"; make clean; make; test -s blackout.elf; make blackout.pkg; test -s blackout.pkg'
+            bash -lc '
+              set -eu
+
+              export PS3DEV=/usr/local/ps3dev
+              export PSL1GHT="$PS3DEV"
+              export PATH="$PS3DEV/bin:$PS3DEV/ppu/bin:$PS3DEV/spu/bin:$PATH"
+
+              echo "=== NETTOYAGE ==="
+              make clean
+
+              echo "=== COMPILATION ==="
+              make V=1
+
+              echo "=== VERIFICATION ELF ==="
+              test -s blackout.elf
+              ls -lh blackout.elf
+              file blackout.elf
+
+              echo "=== VERIFICATION SELF ==="
+              if [ -f blackout.self ]; then
+                ls -lh blackout.self
+                file blackout.self
+              else
+                echo "blackout.self absent à la racine"
+                find . -maxdepth 3 -name "*.self" -type f
+              fi
+
+              echo "=== CREATION PKG ==="
+              make blackout.pkg
+
+              echo "=== VERIFICATION PKG ==="
+              test -s blackout.pkg
+              ls -lh blackout.pkg
+              file blackout.pkg
+
+              echo "=== BUILD TERMINE ==="
+            '
 
       - name: Upload build files
         uses: actions/upload-artifact@v4
         with:
-          name: blackout-ps3-build
+          name: blackout-ps3-diagnostic
           path: |
             blackout.elf
+            blackout.self
             blackout.pkg
-          if-no-files-found: error
+          if-no-files-found: warn
           retention-days: 14
