@@ -23,14 +23,40 @@ jobs:
           pwd
           echo "===== Root files ====="
           ls -la
-          echo "===== Makefile check ====="
+
           if [ ! -f Makefile ]; then
-            echo "ERROR: Makefile is missing from the repository root."
+            echo "ERROR: Makefile is missing."
             exit 1
           fi
+
+          echo "===== Makefile ====="
           sed -n '1,200p' Makefile
+
           echo "===== Source files ====="
           find source -maxdepth 2 -type f 2>/dev/null || true
+
+      - name: Diagnose FreeType
+        run: |
+          docker run --rm hldtux/ps3dev:latest bash -lc '
+            echo "===== FreeType header search ====="
+            find /usr/local/ps3dev \
+              \( -path "*/freetype/config/ftheader.h" -o -name ftheader.h \) \
+              2>/dev/null || true
+
+            echo "===== FreeType config directories ====="
+            find /usr/local/ps3dev \
+              -path "*/freetype/config" -type d \
+              2>/dev/null || true
+
+            echo "===== FreeType packages and libraries ====="
+            find /usr/local/ps3dev \
+              \( -iname "*freetype*" -o -name "ft2build.h" \) \
+              2>/dev/null | head -100
+
+            echo "===== ft2build.h contents ====="
+            sed -n "45,75p" \
+              /usr/local/ps3dev/portlibs/ppu/include/ft2build.h
+          '
 
       - name: Build current project
         run: |
@@ -40,14 +66,14 @@ jobs:
             hldtux/ps3dev:latest \
             bash -lc '
               set -eux
+
               export PS3DEV=/usr/local/ps3dev
               export PSL1GHT=$PS3DEV
               export PATH="$PS3DEV/bin:$PS3DEV/ppu/bin:$PS3DEV/spu/bin:$PATH"
 
-              echo "===== Docker working directory ====="
+              echo "===== Environment ====="
               pwd
               ls -la
-
               test -f Makefile
               test -d source
 
