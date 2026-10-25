@@ -18,35 +18,27 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Check PS3 toolchain
+      - name: Inspect PS3 graphics APIs
         run: |
           docker run --rm hldtux/ps3dev:latest bash -lc '
-            export PS3DEV=/usr/local/ps3dev
-            export PSL1GHT=$PS3DEV
-            export PATH="$PS3DEV/bin:$PS3DEV/ppu/bin:$PS3DEV/spu/bin:$PATH"
+            ROOT=/usr/local/ps3dev
 
-            echo "=== Compiler ==="
-            command -v ppu-gcc
-            ppu-gcc --version
+            echo "===== NoRSX class methods ====="
+            grep -R -n -E "class |public:|void |int |bool |Draw|Print|Font|Background|Image|Rectangle|Line" \
+              "$ROOT/portlibs/ppu/include/NoRSX.h" \
+              "$ROOT/portlibs/ppu/include/NoRSX" \
+              2>/dev/null | head -250
 
-            echo "=== RSX libraries ==="
-            ls -l "$PS3DEV/ppu/lib/librsx.a"
+            echo "===== PSL1GHT startup headers ====="
+            find "$ROOT/ppu/include" -maxdepth 3 -type f \
+              \( -name "sysutil.h" -o -name "video.h" -o -name "rsx.h" \) \
+              -print 2>/dev/null
 
-            echo "=== NoRSX libraries ==="
-            ls -l "$PS3DEV/portlibs/ppu/lib/libNoRSX.a"
-          '
+            echo "===== Available PS3 libraries ====="
+            ls "$ROOT/ppu/lib" | grep -E "rsx|sysutil|gcm|gcm_sys|c" | head -100
 
-      - name: Inspect NoRSX headers and examples
-        run: |
-          docker run --rm hldtux/ps3dev:latest bash -lc '
-            echo "=== NoRSX header ==="
-            sed -n "1,180p" /usr/local/ps3dev/portlibs/ppu/include/NoRSX.h
-
-            echo "=== NoRSX utilities ==="
-            sed -n "1,180p" /usr/local/ps3dev/portlibs/ppu/include/NoRSX/NoRSXutil.h
-
-            echo "=== PSL1GHT templates and source files ==="
-            find /usr/local/ps3dev -type f \( -name "Makefile" -o -name "*.c" -o -name "*.h" \) 2>/dev/null | head -100
+            echo "===== NoRSX files ====="
+            find "$ROOT/portlibs/ppu/include/NoRSX" -maxdepth 2 -type f -print
           '
 
       - name: Build ELF
@@ -59,7 +51,6 @@ jobs:
               export PS3DEV=/usr/local/ps3dev
               export PSL1GHT=$PS3DEV
               export PATH="$PS3DEV/bin:$PS3DEV/ppu/bin:$PS3DEV/spu/bin:$PATH"
-
               make clean
               make
               test -s blackout.elf
@@ -69,7 +60,6 @@ jobs:
         if: always()
         run: |
           mkdir -p dist
-
           if [ -s blackout.elf ]; then
             cp blackout.elf dist/
             echo "ELF generated." > dist/BUILD-STATUS.txt
