@@ -1,5 +1,5 @@
 name: Build PS3 Homebrew
-'on': push: branches: - main - master workflow_dispatch:
+'on':push: branches: - main - master workflow_dispatch:
 jobs: build: runs-on: ubuntu-latest timeout-minutes: 60
 steps:
   - name: Checkout repository
