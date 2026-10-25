@@ -23,16 +23,13 @@ jobs:
           test -f Makefile
           test -f source/main.cpp
           test -f BLACKOUT_MENU.png
-          echo "Project files found."
 
-      - name: Prepare game resources
+      - name: Prepare resources
         run: |
           mkdir -p assets/USRDIR
           cp BLACKOUT_MENU.png assets/USRDIR/BLACKOUT_MENU.png
-          echo "Resources prepared:"
-          find assets -type f
 
-      - name: Build ELF
+      - name: Build ELF and PKG
         run: |
           docker run --rm \
             -v "$PWD:/workspace" \
@@ -50,7 +47,7 @@ jobs:
                 -print -quit 2>/dev/null || true)"
 
               if [ -z "$HEADER" ]; then
-                echo "ERROR: FreeType headers not found."
+                echo "ERROR: FreeType header not found"
                 exit 1
               fi
 
@@ -60,38 +57,40 @@ jobs:
 
               make clean
               make
-
               test -s blackout.elf
-              file blackout.elf
+
+              make blackout.pkg
+              test -s blackout.pkg
+
+              echo "ELF and PKG generated successfully"
+              ls -lh blackout.elf blackout.pkg
             '
 
-      - name: Collect game files
+      - name: Collect artifacts
         if: always()
         run: |
-          mkdir -p dist/USRDIR
+          mkdir -p dist
 
           if [ -s blackout.elf ]; then
             cp blackout.elf dist/
           fi
 
-          if [ -s assets/USRDIR/BLACKOUT_MENU.png ]; then
-            cp assets/USRDIR/BLACKOUT_MENU.png dist/USRDIR/
+          if [ -s blackout.pkg ]; then
+            cp blackout.pkg dist/
           fi
 
-          cat > dist/README.txt <<'EOF'
-          BLACKOUT: SIGNAL LOST
-          PS3 homebrew development build
+          if [ -s BLACKOUT_MENU.png ]; then
+            cp BLACKOUT_MENU.png dist/
+          fi
 
-          blackout.elf is the compiled executable.
-          USRDIR/BLACKOUT_MENU.png is the menu background resource.
-
-          These files are not yet a ready-to-install PS3 PKG.
-          The package metadata and resource loading path still need integration.
-          EOF
+          if [ -d assets/USRDIR ]; then
+            mkdir -p dist/USRDIR
+            cp -r assets/USRDIR/. dist/USRDIR/
+          fi
 
           find dist -type f -print
 
-      - name: Upload build artifacts
+      - name: Upload artifacts
         if: always()
         uses: actions/upload-artifact@v4
         with:
