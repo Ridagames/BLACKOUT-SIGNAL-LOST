@@ -18,30 +18,24 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Inspect PS3 graphics APIs
+      - name: Read official NoRSX example
         run: |
-          docker run --rm hldtux/ps3dev:latest bash -lc '
-            ROOT=/usr/local/ps3dev
+          git clone --depth 1 https://github.com/wargio/NoRSX.git /tmp/NoRSX
 
-            echo "===== NoRSX class methods ====="
-            grep -R -n -E "class |public:|void |int |bool |Draw|Print|Font|Background|Image|Rectangle|Line" \
-              "$ROOT/portlibs/ppu/include/NoRSX.h" \
-              "$ROOT/portlibs/ppu/include/NoRSX" \
-              2>/dev/null | head -250
+          echo "===== Example files ====="
+          find /tmp/NoRSX/NoRSX_Example -maxdepth 3 -type f
 
-            echo "===== PSL1GHT startup headers ====="
-            find "$ROOT/ppu/include" -maxdepth 3 -type f \
-              \( -name "sysutil.h" -o -name "video.h" -o -name "rsx.h" \) \
-              -print 2>/dev/null
+          echo "===== Example source code ====="
+          find /tmp/NoRSX/NoRSX_Example -type f \
+            \( -name "*.cpp" -o -name "*.c" -o -name "*.h" -o -name "Makefile" \) \
+            -exec sh -c '
+              for f do
+                echo "===== $f ====="
+                sed -n "1,240p" "$f"
+              done
+            ' sh {} +
 
-            echo "===== Available PS3 libraries ====="
-            ls "$ROOT/ppu/lib" | grep -E "rsx|sysutil|gcm|gcm_sys|c" | head -100
-
-            echo "===== NoRSX files ====="
-            find "$ROOT/portlibs/ppu/include/NoRSX" -maxdepth 2 -type f -print
-          '
-
-      - name: Build ELF
+      - name: Build current project
         run: |
           docker run --rm \
             -v "$PWD:/build" \
@@ -60,6 +54,7 @@ jobs:
         if: always()
         run: |
           mkdir -p dist
+
           if [ -s blackout.elf ]; then
             cp blackout.elf dist/
             echo "ELF generated." > dist/BUILD-STATUS.txt
