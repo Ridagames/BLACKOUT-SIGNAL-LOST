@@ -1,3 +1,4 @@
+
 .SUFFIXES:
 
 ifeq ($(strip $(PSL1GHT)),)
@@ -13,6 +14,9 @@ INCLUDES := $(PS3DEV)/portlibs/ppu/include/freetype2
 
 TITLE := BLACKOUT: SIGNAL LOST
 APPID := BLSG00001
+CONTENTID := UP0001-BLSG00001_00-0000000000000000
+
+PKGFILES := $(CURDIR)/assets
 
 CFLAGS := -O2 -Wall -mcpu=cell $(MACHDEP) $(INCLUDE)
 CXXFLAGS := $(CFLAGS)
