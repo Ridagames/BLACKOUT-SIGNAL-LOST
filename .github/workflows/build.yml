@@ -1,3 +1,4 @@
+
 name: Build PS3 Homebrew
 
 on:
@@ -12,28 +13,48 @@ jobs:
   build:
     runs-on: ubuntu-latest
     timeout-minutes: 60
+
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Build in PS3DEV container
+      - name: Check PS3 development libraries
         run: |
           docker pull hldtux/ps3dev:latest
+          docker run --rm hldtux/ps3dev:latest bash -lc '
+            echo "=== Environment ==="
+            echo "PS3DEV=$PS3DEV"
+            echo "PSL1GHT=$PSL1GHT"
+            echo "=== Compiler ==="
+            command -v ppu-gcc || true
+            echo "=== Relevant files ==="
+            find /usr/local /opt -iname "*rsx*" -o -iname "*psl1ght*" 2>/dev/null | head -80
+          '
+
+      - name: Build ELF
+        run: |
           docker run --rm \
             -v "$PWD:/build" \
             -w /build \
             hldtux/ps3dev:latest \
-            bash -lc 'export PS3DEV="${PS3DEV:-/usr/local/ps3dev}"; export PSL1GHT="${PSL1GHT:-$PS3DEV}"; export PATH="$PATH:$PS3DEV/bin:$PS3DEV/ppu/bin:$PS3DEV/spu/bin"; make'
+            bash -lc '
+              export PS3DEV="${PS3DEV:-/usr/local/ps3dev}"
+              export PSL1GHT="${PSL1GHT:-$PS3DEV}"
+              export PATH="$PATH:$PS3DEV/bin:$PS3DEV/ppu/bin:$PS3DEV/spu/bin"
+              make clean
+              make
+              test -s blackout.elf
+            '
 
       - name: Collect build outputs
         if: always()
         run: |
           mkdir -p dist
-          find . -maxdepth 4 -type f \( -name '*.elf' -o -name '*.self' -o -name '*.pkg' -o -name '*.log' \) \
-            -not -path './.git/*' -exec cp --parents {} dist/ \; || true
-          cp README.md dist/README.md
-          if [ "$(find dist -type f | wc -l)" -le 1 ]; then
-            echo "No PS3 binary was produced. This starter Makefile needs to be connected to the PSL1GHT application template." > dist/BUILD-STATUS.txt
+          if [ -s blackout.elf ]; then
+            cp blackout.elf dist/
+            echo "ELF generated successfully." > dist/BUILD-STATUS.txt
+          else
+            echo "No ELF generated. Check the previous build logs." > dist/BUILD-STATUS.txt
           fi
 
       - name: Upload build artifacts
