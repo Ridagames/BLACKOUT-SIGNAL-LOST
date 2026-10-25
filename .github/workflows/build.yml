@@ -18,31 +18,21 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Check project files
+      - name: Verify project files
         run: |
-          echo "===== Root ====="
-          pwd
-          ls -la
-          echo "===== Sources ====="
-          find source -maxdepth 2 -type f 2>/dev/null || true
           test -f Makefile
-          test -d source
+          test -f source/main.cpp
           test -f BLACKOUT_MENU.png
+          echo "Project files found."
 
-      - name: Diagnose FreeType
+      - name: Prepare game resources
         run: |
-          docker run --rm hldtux/ps3dev:latest bash -lc '
-            echo "===== FreeType headers ====="
-            find /usr/local/ps3dev \
-              \( -name ftheader.h -o -name ft2build.h \) \
-              -type f 2>/dev/null || true
+          mkdir -p assets/USRDIR
+          cp BLACKOUT_MENU.png assets/USRDIR/BLACKOUT_MENU.png
+          echo "Resources prepared:"
+          find assets -type f
 
-            echo "===== FreeType libraries ====="
-            find /usr/local/ps3dev \
-              -name "*freetype*" 2>/dev/null | head -100
-          '
-
-      - name: Build current project
+      - name: Build ELF
         run: |
           docker run --rm \
             -v "$PWD:/workspace" \
@@ -55,10 +45,12 @@ jobs:
               export PSL1GHT=$PS3DEV
               export PATH="$PS3DEV/bin:$PS3DEV/ppu/bin:$PS3DEV/spu/bin:$PATH"
 
-              HEADER="$(find "$PS3DEV" -type f -path "*/freetype/config/ftheader.h" -print -quit 2>/dev/null || true)"
+              HEADER="$(find "$PS3DEV" -type f \
+                -path "*/freetype/config/ftheader.h" \
+                -print -quit 2>/dev/null || true)"
 
               if [ -z "$HEADER" ]; then
-                echo "ERROR: freetype/config/ftheader.h is missing."
+                echo "ERROR: FreeType headers not found."
                 exit 1
               fi
 
@@ -66,28 +58,38 @@ jobs:
               export CFLAGS="${CFLAGS:-} -I$HEADER_DIR"
               export CXXFLAGS="${CXXFLAGS:-} -I$HEADER_DIR"
 
-              make -f Makefile clean
-              make -f Makefile
+              make clean
+              make
 
               test -s blackout.elf
               file blackout.elf
             '
 
-      - name: Collect build outputs
+      - name: Collect game files
         if: always()
         run: |
-          mkdir -p dist
+          mkdir -p dist/USRDIR
 
           if [ -s blackout.elf ]; then
             cp blackout.elf dist/
-            echo "ELF generated." > dist/BUILD-STATUS.txt
-          else
-            echo "ELF not generated. Check build logs." > dist/BUILD-STATUS.txt
           fi
 
-          if [ -s BLACKOUT_MENU.png ]; then
-            cp BLACKOUT_MENU.png dist/
+          if [ -s assets/USRDIR/BLACKOUT_MENU.png ]; then
+            cp assets/USRDIR/BLACKOUT_MENU.png dist/USRDIR/
           fi
+
+          cat > dist/README.txt <<'EOF'
+          BLACKOUT: SIGNAL LOST
+          PS3 homebrew development build
+
+          blackout.elf is the compiled executable.
+          USRDIR/BLACKOUT_MENU.png is the menu background resource.
+
+          These files are not yet a ready-to-install PS3 PKG.
+          The package metadata and resource loading path still need integration.
+          EOF
+
+          find dist -type f -print
 
       - name: Upload build artifacts
         if: always()
