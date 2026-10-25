@@ -35,8 +35,8 @@ jobs:
       - name: Build current project
         run: |
           docker run --rm \
-            -v "$PWD:/build" \
-            -w /build \
+            -v "$PWD:/workspace" \
+            -w /workspace \
             hldtux/ps3dev:latest \
             bash -lc '
               set -eux
