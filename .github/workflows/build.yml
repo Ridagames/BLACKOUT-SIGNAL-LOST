@@ -1,72 +1,28 @@
-
-name: Build PS3 Homebrew
+name: Read NoRSX Source
 
 on:
-  push:
-    branches: [main, master]
   workflow_dispatch:
 
 permissions:
   contents: read
 
 jobs:
-  build:
+  read-source:
     runs-on: ubuntu-latest
-    timeout-minutes: 60
 
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Read official NoRSX example
+      - name: Download NoRSX example
         run: |
           git clone --depth 1 https://github.com/wargio/NoRSX.git /tmp/NoRSX
 
-          echo "===== Example files ====="
-          find /tmp/NoRSX/NoRSX_Example -maxdepth 3 -type f
+          mkdir -p output
 
-          echo "===== Example source code ====="
-          find /tmp/NoRSX/NoRSX_Example -type f \
-            \( -name "*.cpp" -o -name "*.c" -o -name "*.h" -o -name "Makefile" \) \
-            -exec sh -c '
-              for f do
-                echo "===== $f ====="
-                sed -n "1,240p" "$f"
-              done
-            ' sh {} +
+          cp /tmp/NoRSX/NoRSX_Example/source/main.cpp output/
+          cp /tmp/NoRSX/NoRSX_Example/Makefile output/
 
-      - name: Build current project
-        run: |
-          docker run --rm \
-            -v "$PWD:/build" \
-            -w /build \
-            hldtux/ps3dev:latest \
-            bash -lc '
-              export PS3DEV=/usr/local/ps3dev
-              export PSL1GHT=$PS3DEV
-              export PATH="$PS3DEV/bin:$PS3DEV/ppu/bin:$PS3DEV/spu/bin:$PATH"
-              make clean
-              make
-              test -s blackout.elf
-            '
-
-      - name: Collect build outputs
-        if: always()
-        run: |
-          mkdir -p dist
-
-          if [ -s blackout.elf ]; then
-            cp blackout.elf dist/
-            echo "ELF generated." > dist/BUILD-STATUS.txt
-          else
-            echo "ELF not generated. Check build logs." > dist/BUILD-STATUS.txt
-          fi
-
-      - name: Upload build artifacts
-        if: always()
+      - name: Upload source files
         uses: actions/upload-artifact@v4
         with:
-          name: blackout-ps3-build
-          path: dist/
-          if-no-files-found: warn
-          retention-days: 14
+          name: NoRSX-source
+          path: output/
+          retention-days: 7
