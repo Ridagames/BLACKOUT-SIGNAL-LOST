@@ -18,17 +18,19 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Check PS3 development libraries
+      - name: Check PS3 toolchain
         run: |
-          docker pull hldtux/ps3dev:latest
           docker run --rm hldtux/ps3dev:latest bash -lc '
-            echo "=== Environment ==="
-            echo "PS3DEV=$PS3DEV"
-            echo "PSL1GHT=$PSL1GHT"
+            export PS3DEV=/usr/local/ps3dev
+            export PSL1GHT=$PS3DEV
+            export PATH="$PS3DEV/bin:$PS3DEV/ppu/bin:$PS3DEV/spu/bin:$PATH"
             echo "=== Compiler ==="
-            command -v ppu-gcc || true
-            echo "=== Relevant files ==="
-            find /usr/local /opt -iname "*rsx*" -o -iname "*psl1ght*" 2>/dev/null | head -80
+            command -v ppu-gcc
+            ppu-gcc --version
+            echo "=== RSX libraries ==="
+            ls -l "$PS3DEV/ppu/lib/librsx.a"
+            echo "=== NoRSX libraries ==="
+            ls -l "$PS3DEV/portlibs/ppu/lib/libNoRSX.a"
           '
 
       - name: Build ELF
@@ -38,9 +40,9 @@ jobs:
             -w /build \
             hldtux/ps3dev:latest \
             bash -lc '
-              export PS3DEV="${PS3DEV:-/usr/local/ps3dev}"
-              export PSL1GHT="${PSL1GHT:-$PS3DEV}"
-              export PATH="$PATH:$PS3DEV/bin:$PS3DEV/ppu/bin:$PS3DEV/spu/bin"
+              export PS3DEV=/usr/local/ps3dev
+              export PSL1GHT=$PS3DEV
+              export PATH="$PS3DEV/bin:$PS3DEV/ppu/bin:$PS3DEV/spu/bin:$PATH"
               make clean
               make
               test -s blackout.elf
@@ -52,9 +54,9 @@ jobs:
           mkdir -p dist
           if [ -s blackout.elf ]; then
             cp blackout.elf dist/
-            echo "ELF generated successfully." > dist/BUILD-STATUS.txt
+            echo "ELF generated." > dist/BUILD-STATUS.txt
           else
-            echo "No ELF generated. Check the previous build logs." > dist/BUILD-STATUS.txt
+            echo "ELF not generated. Check build logs." > dist/BUILD-STATUS.txt
           fi
 
       - name: Upload build artifacts
