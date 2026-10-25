@@ -1,3 +1,4 @@
+
 name: Build PS3 Homebrew
 
 on:
@@ -26,6 +27,7 @@ jobs:
           find source -maxdepth 2 -type f 2>/dev/null || true
           test -f Makefile
           test -d source
+          test -f BLACKOUT_MENU.png
 
       - name: Diagnose FreeType
         run: |
@@ -53,28 +55,20 @@ jobs:
               export PSL1GHT=$PS3DEV
               export PATH="$PS3DEV/bin:$PS3DEV/ppu/bin:$PS3DEV/spu/bin:$PATH"
 
-              echo "===== Locate missing header ====="
               HEADER="$(find "$PS3DEV" -type f -path "*/freetype/config/ftheader.h" -print -quit 2>/dev/null || true)"
 
               if [ -z "$HEADER" ]; then
-                echo "ERROR: freetype/config/ftheader.h is missing from the PS3 toolchain."
-                echo "The Docker image does not provide the header required by NoRSX."
+                echo "ERROR: freetype/config/ftheader.h is missing."
                 exit 1
               fi
 
               HEADER_DIR="$(dirname "$(dirname "$(dirname "$(dirname "$HEADER")")")")"
-              echo "Found: $HEADER"
-              echo "Adding include path: $HEADER_DIR"
               export CFLAGS="${CFLAGS:-} -I$HEADER_DIR"
               export CXXFLAGS="${CXXFLAGS:-} -I$HEADER_DIR"
 
-              echo "===== Clean ====="
               make -f Makefile clean
-
-              echo "===== Compile ====="
               make -f Makefile
 
-              echo "===== Verify ELF ====="
               test -s blackout.elf
               file blackout.elf
             '
@@ -89,6 +83,10 @@ jobs:
             echo "ELF generated." > dist/BUILD-STATUS.txt
           else
             echo "ELF not generated. Check build logs." > dist/BUILD-STATUS.txt
+          fi
+
+          if [ -s BLACKOUT_MENU.png ]; then
+            cp BLACKOUT_MENU.png dist/
           fi
 
       - name: Upload build artifacts
