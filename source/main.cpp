@@ -2,10 +2,12 @@
 #include <NoRSX.h>
 #include <io/pad.h>
 #include <pngdec/pngdec.h>
+#include <string.h>
 
 static const u32 GAME_TEXT_COLOR = 0xE6E6E6;
 static const u32 GAME_ACCENT_COLOR = 0xD62828;
 static const u32 GAME_MUTED_COLOR = 0xAAAAAA;
+static const u32 GAME_BG_COLOR = 0x080B10;
 
 int main(int argc, const char* argv[])
 {
@@ -19,14 +21,31 @@ int main(int argc, const char* argv[])
     Font FONT(JPN, &GFX);
     Image IMG(&GFX);
 
-    pngData menuBackground = {};
+    pngData menuBackground;
+    memset(&menuBackground, 0, sizeof(menuBackground));
 
     bool imageLoaded = false;
 
-    IMG.LoadPNG("/app_home/BLACKOUT_MENU.png", &menuBackground);
+    const char* imagePaths[] = {
+        "/dev_hdd0/game/BLSG00001/USRDIR/BLACKOUT_MENU.png",
+        "/app_home/BLACKOUT_MENU.png",
+        "BLACKOUT_MENU.png"
+    };
 
-    if (menuBackground.width > 0 && menuBackground.height > 0)
-        imageLoaded = true;
+    for (unsigned int i = 0;
+         i < sizeof(imagePaths) / sizeof(imagePaths[0]);
+         i++)
+    {
+        memset(&menuBackground, 0, sizeof(menuBackground));
+        IMG.LoadPNG(imagePaths[i], &menuBackground);
+
+        if (menuBackground.width > 0 &&
+            menuBackground.height > 0)
+        {
+            imageLoaded = true;
+            break;
+        }
+    }
 
     const char* menuItems[] = {
         "NOUVELLE PARTIE",
@@ -64,13 +83,9 @@ int main(int argc, const char* argv[])
         }
 
         if (imageLoaded)
-        {
             IMG.DrawIMG(0, 0, &menuBackground);
-        }
         else
-        {
-            BG.Mono(0x080B10);
-        }
+            BG.Mono(GAME_BG_COLOR);
 
         FONT.Printf(90, 105, GAME_TEXT_COLOR, "BLACKOUT");
         FONT.Printf(95, 145, GAME_MUTED_COLOR,
