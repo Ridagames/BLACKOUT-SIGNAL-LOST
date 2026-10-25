@@ -1,0 +1,46 @@
+name: Build PS3 Homebrew
+
+on:
+  push:
+    branches: [main, master]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Build in PS3DEV container
+        run: |
+          docker pull hldtux/ps3dev:latest
+          docker run --rm \
+            -v "$PWD:/build" \
+            -w /build \
+            hldtux/ps3dev:latest \
+            bash -lc 'export PS3DEV="${PS3DEV:-/usr/local/ps3dev}"; export PSL1GHT="${PSL1GHT:-$PS3DEV}"; export PATH="$PATH:$PS3DEV/bin:$PS3DEV/ppu/bin:$PS3DEV/spu/bin"; make'
+
+      - name: Collect build outputs
+        if: always()
+        run: |
+          mkdir -p dist
+          find . -maxdepth 4 -type f \( -name '*.elf' -o -name '*.self' -o -name '*.pkg' -o -name '*.log' \) \
+            -not -path './.git/*' -exec cp --parents {} dist/ \; || true
+          cp README.md dist/README.md
+          if [ "$(find dist -type f | wc -l)" -le 1 ]; then
+            echo "No PS3 binary was produced. This starter Makefile needs to be connected to the PSL1GHT application template." > dist/BUILD-STATUS.txt
+          fi
+
+      - name: Upload build artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: blackout-ps3-build
+          path: dist/
+          if-no-files-found: warn
+          retention-days: 14

@@ -1,0 +1,6 @@
+*.elf
+*.self
+*.pkg
+*.o
+*.log
+dist/
