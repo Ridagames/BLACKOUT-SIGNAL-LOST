@@ -1,37 +1,26 @@
 name: Build PS3 Homebrew
-
 'on':
 push:
-branches:
-- main
-- master
-workflow_dispatch:
-
-permissions:
-contents: read
+branches: [main, master]
+workflow_dispatch: {}
 
 jobs:
 build:
 runs-on: ubuntu-latest
-timeout-minutes: 60
-
 steps:
-  - name: Checkout
-    uses: actions/checkout@v4
+- uses: actions/checkout@v4
 
-  - name: Verify project files
-    shell: bash
+  - name: Verify files
     run: |
-      set -euo pipefail
+      set -eu
+      ls -la
       test -f Makefile
       test -f source/main.cpp
       test -s assets/USRDIR/BLACKOUT_MENU.png
 
-  - name: Build ELF and PKG
-    shell: bash
+  - name: Build
     run: |
-      set -euo pipefail
-
+      set -eu
       docker run --rm \
         -v "$PWD:/workspace" \
         -w /workspace \
@@ -41,34 +30,21 @@ steps:
           export PS3DEV=/usr/local/ps3dev
           export PSL1GHT="$PS3DEV"
           export PATH="$PS3DEV/bin:$PS3DEV/ppu/bin:$PS3DEV/spu/bin:$PATH"
-
           make clean
           make
           test -s blackout.elf
-
           make blackout.pkg
           test -s blackout.pkg
-
-          ls -lh blackout.elf blackout.pkg
         '
 
-  - name: Collect artifacts
-    if: always()
-    shell: bash
-    run: |
-      mkdir -p dist
-      if [ -s blackout.elf ]; then cp blackout.elf dist/; fi
-      if [ -s blackout.pkg ]; then cp blackout.pkg dist/; fi
-      if [ -s assets/USRDIR/BLACKOUT_MENU.png ]; then
-        mkdir -p dist/USRDIR
-        cp assets/USRDIR/BLACKOUT_MENU.png dist/USRDIR/
-      fi
-
-  - name: Upload artifacts
+  - name: Upload build
     if: always()
     uses: actions/upload-artifact@v4
     with:
       name: blackout-ps3-build
-      path: dist/
+      path: |
+        blackout.elf
+        blackout.pkg
+        assets/USRDIR/BLACKOUT_MENU.png
       if-no-files-found: warn
       retention-days: 14
