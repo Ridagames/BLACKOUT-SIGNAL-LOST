@@ -1,100 +1,121 @@
-
 name: Build PS3 Homebrew
 
 on:
-  push:
-    branches: [main, master]
-  workflow_dispatch:
+push:
+branches: [main, master]
+workflow_dispatch:
 
 permissions:
-  contents: read
+contents: read
 
 jobs:
-  build:
-    runs-on: ubuntu-latest
-    timeout-minutes: 60
+build:
+runs-on: ubuntu-latest
+timeout-minutes: 60
 
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+steps:
+  - name: Checkout
+    uses: actions/checkout@v4
 
-      - name: Verify project files
-        run: |
-          test -f Makefile
-          test -f source/main.cpp
-          test -f BLACKOUT_MENU.png
+  - name: Inspect repository
+    run: |
+      echo "=== Fichiers à la racine ==="
+      ls -la
+      echo "=== Fichiers du projet ==="
+      find . -maxdepth 4 -type f | sort
 
-      - name: Prepare resources
-        run: |
-          mkdir -p assets/USRDIR
-          cp BLACKOUT_MENU.png assets/USRDIR/BLACKOUT_MENU.png
+  - name: Verify project files
+    run: |
+      set -eu
 
-      - name: Build ELF and PKG
-        run: |
-          docker run --rm \
-            -v "$PWD:/workspace" \
-            -w /workspace \
-            hldtux/ps3dev:latest \
-            bash -lc '
-              set -eu
+      if [ ! -f Makefile ]; then
+        echo "::error::Makefile introuvable à la racine du dépôt."
+        echo "Vérifie que le fichier s'appelle exactement Makefile, sans extension .txt."
+        exit 1
+      fi
 
-              export PS3DEV=/usr/local/ps3dev
-              export PSL1GHT=$PS3DEV
-              export PATH="$PS3DEV/bin:$PS3DEV/ppu/bin:$PS3DEV/spu/bin:$PATH"
+      if [ ! -f source/main.cpp ]; then
+        echo "::error::source/main.cpp introuvable."
+        exit 1
+      fi
 
-              HEADER="$(find "$PS3DEV" -type f \
-                -path "*/freetype/config/ftheader.h" \
-                -print -quit 2>/dev/null || true)"
+      if [ ! -f BLACKOUT_MENU.png ]; then
+        echo "::error::BLACKOUT_MENU.png introuvable à la racine."
+        exit 1
+      fi
 
-              if [ -z "$HEADER" ]; then
-                echo "ERROR: FreeType header not found"
-                exit 1
-              fi
+  - name: Prepare resources
+    run: |
+      set -eu
+      mkdir -p assets/USRDIR
+      cp BLACKOUT_MENU.png assets/USRDIR/BLACKOUT_MENU.png
+      test -s assets/USRDIR/BLACKOUT_MENU.png
 
-              HEADER_DIR="$(dirname "$(dirname "$(dirname "$(dirname "$HEADER")")")")"
-              export CFLAGS="${CFLAGS:-} -I$HEADER_DIR"
-              export CXXFLAGS="${CXXFLAGS:-} -I$HEADER_DIR"
+  - name: Build ELF and PKG
+    run: |
+      set -eu
 
-              make clean
-              make
-              test -s blackout.elf
+      docker run --rm \
+        -v "$PWD:/workspace" \
+        -w /workspace \
+        hldtux/ps3dev:latest \
+        bash -lc '
+          set -eu
 
-              make blackout.pkg
-              test -s blackout.pkg
+          export PS3DEV=/usr/local/ps3dev
+          export PSL1GHT=$PS3DEV
+          export PATH="$PS3DEV/bin:$PS3DEV/ppu/bin:$PS3DEV/spu/bin:$PATH"
 
-              echo "ELF and PKG generated successfully"
-              ls -lh blackout.elf blackout.pkg
-            '
-
-      - name: Collect artifacts
-        if: always()
-        run: |
-          mkdir -p dist
-
-          if [ -s blackout.elf ]; then
-            cp blackout.elf dist/
+          if [ ! -f Makefile ]; then
+            echo "ERROR: Makefile missing from repository root"
+            exit 1
           fi
 
-          if [ -s blackout.pkg ]; then
-            cp blackout.pkg dist/
+          HEADER="$(find "$PS3DEV" -type f \
+            -path "*/freetype/config/ftheader.h" \
+            -print -quit 2>/dev/null || true)"
+
+          if [ -n "$HEADER" ]; then
+            HEADER_DIR="$(dirname "$(dirname "$(dirname "$(dirname "$HEADER")")")")"
+            export CFLAGS="${CFLAGS:-} -I$HEADER_DIR"
+            export CXXFLAGS="${CXXFLAGS:-} -I$HEADER_DIR"
+          else
+            echo "WARNING: FreeType header not found by optional search"
           fi
 
-          if [ -s BLACKOUT_MENU.png ]; then
-            cp BLACKOUT_MENU.png dist/
-          fi
+          make clean
+          make
+          test -s blackout.elf
 
-          if [ -d assets/USRDIR ]; then
-            mkdir -p dist/USRDIR
-            cp -r assets/USRDIR/. dist/USRDIR/
-          fi
+          make blackout.pkg
+          test -s blackout.pkg
 
-          find dist -type f -print
+          echo "Build completed successfully"
+          ls -lh blackout.elf blackout.pkg
+        '
 
-      - name: Upload artifacts
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: blackout-ps3-build
-          path: dist/
-          if-no-files-found: warn
-          retention-days: 14
+  - name: Collect artifacts
+    if: always()
+    run: |
+      mkdir -p dist
+
+      [ ! -s blackout.elf ] || cp blackout.elf dist/
+      [ ! -s blackout.pkg ] || cp blackout.pkg dist/
+      [ ! -s BLACKOUT_MENU.png ] || cp BLACKOUT_MENU.png dist/
+
+      if [ -d assets/USRDIR ]; then
+        mkdir -p dist/USRDIR
+        cp -r assets/USRDIR/. dist/USRDIR/
+      fi
+
+      echo "=== Artifacts collected ==="
+      find dist -type f -print
+
+  - name: Upload artifacts
+    if: always()
+    uses: actions/upload-artifact@v4
+    with:
+      name: blackout-ps3-build
+      path: dist/
+      if-no-files-found: warn
+      retention-days: 14
