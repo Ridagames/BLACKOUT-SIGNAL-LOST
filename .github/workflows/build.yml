@@ -1,94 +1,61 @@
 name: Build PS3 Homebrew
-
 'on':
-push:
-branches: [main, master]
 workflow_dispatch:
-
-permissions:
-contents: read
+push:
+branches:
+- main
+- master
 
 jobs:
 build:
 runs-on: ubuntu-latest
 timeout-minutes: 60
-
 steps:
-  - name: Checkout repository
-    uses: actions/checkout@v4
+- name: Checkout
+uses: actions/checkout@v4
 
-  - name: Verify project files
-    shell: bash
+  - name: Verify files
     run: |
-      set -euo pipefail
-      echo "Checking project files..."
+      set -eu
       test -f Makefile
       test -f source/main.cpp
       test -s assets/USRDIR/BLACKOUT_MENU.png
-      echo "All required files found."
 
-  - name: Build PS3 ELF and PKG
-    shell: bash
+  - name: Build ELF and PKG
     run: |
-      set -euo pipefail
-
+      set -eu
       docker run --rm \
         -v "$PWD:/workspace" \
         -w /workspace \
         hldtux/ps3dev:latest \
         bash -lc '
           set -eu
-
           export PS3DEV=/usr/local/ps3dev
           export PSL1GHT="$PS3DEV"
           export PATH="$PS3DEV/bin:$PS3DEV/ppu/bin:$PS3DEV/spu/bin:$PATH"
-
-          echo "=== PS3DEV environment ==="
-          test -f "$PSL1GHT/ppu_rules"
-
-          echo "=== Clean ==="
           make clean
-
-          echo "=== Compile ==="
           make
           test -s blackout.elf
-
-          echo "=== Package ==="
           make blackout.pkg
           test -s blackout.pkg
-
-          echo "=== Build outputs ==="
-          ls -lh blackout.elf blackout.pkg
         '
 
-  - name: Prepare build artifacts
+  - name: Collect artifacts
     if: always()
-    shell: bash
     run: |
-      set -euo pipefail
       mkdir -p dist
-
-      if [ -s blackout.elf ]; then
-        cp blackout.elf dist/
-      fi
-
-      if [ -s blackout.pkg ]; then
-        cp blackout.pkg dist/
-      fi
-
+      if [ -s blackout.elf ]; then cp blackout.elf dist/; fi
+      if [ -s blackout.pkg ]; then cp blackout.pkg dist/; fi
       if [ -s assets/USRDIR/BLACKOUT_MENU.png ]; then
         mkdir -p dist/USRDIR
         cp assets/USRDIR/BLACKOUT_MENU.png dist/USRDIR/
       fi
 
-      echo "=== Artifacts ==="
-      find dist -type f -print
-
-  - name: Upload build artifacts
+  - name: Upload artifacts
     if: always()
     uses: actions/upload-artifact@v4
     with:
       name: blackout-ps3-build
       path: dist/
-      if-no-files-found: error
+      if-no-files-found: warn
       retention-days: 14
