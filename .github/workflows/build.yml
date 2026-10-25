@@ -2,7 +2,9 @@ name: Build PS3 Homebrew
 
 'on':
 push:
-branches: [main, master]
+branches:
+- main
+- master
 workflow_dispatch:
 
 permissions:
@@ -18,16 +20,18 @@ steps:
     uses: actions/checkout@v4
 
   - name: Verify project files
+    shell: bash
     run: |
-      set -eu
+      set -euo pipefail
       test -f Makefile
       test -f source/main.cpp
       test -s assets/USRDIR/BLACKOUT_MENU.png
-      echo "Fichiers du projet vérifiés."
 
   - name: Build ELF and PKG
+    shell: bash
     run: |
-      set -eu
+      set -euo pipefail
+
       docker run --rm \
         -v "$PWD:/workspace" \
         -w /workspace \
@@ -35,36 +39,30 @@ steps:
         bash -lc '
           set -eu
           export PS3DEV=/usr/local/ps3dev
-          export PSL1GHT=$PS3DEV
+          export PSL1GHT="$PS3DEV"
           export PATH="$PS3DEV/bin:$PS3DEV/ppu/bin:$PS3DEV/spu/bin:$PATH"
-
-          HEADER="$(find "$PS3DEV" -type f \
-            -path "*/freetype/config/ftheader.h" \
-            -print -quit 2>/dev/null || true)"
-
-          if [ -n "$HEADER" ]; then
-            HEADER_DIR="$(dirname "$(dirname "$(dirname "$(dirname "$HEADER")")")")"
-            export CFLAGS="${CFLAGS:-} -I$HEADER_DIR"
-            export CXXFLAGS="${CXXFLAGS:-} -I$HEADER_DIR"
-          fi
 
           make clean
           make
           test -s blackout.elf
+
           make blackout.pkg
           test -s blackout.pkg
-          echo "Build réussi."
+
           ls -lh blackout.elf blackout.pkg
         '
 
   - name: Collect artifacts
     if: always()
+    shell: bash
     run: |
       mkdir -p dist
-      [ ! -s blackout.elf ] || cp blackout.elf dist/
-      [ ! -s blackout.pkg ] || cp blackout.pkg dist/
-      mkdir -p dist/USRDIR
-      cp assets/USRDIR/BLACKOUT_MENU.png dist/USRDIR/
+      if [ -s blackout.elf ]; then cp blackout.elf dist/; fi
+      if [ -s blackout.pkg ]; then cp blackout.pkg dist/; fi
+      if [ -s assets/USRDIR/BLACKOUT_MENU.png ]; then
+        mkdir -p dist/USRDIR
+        cp assets/USRDIR/BLACKOUT_MENU.png dist/USRDIR/
+      fi
 
   - name: Upload artifacts
     if: always()
