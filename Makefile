@@ -19,7 +19,7 @@ PKGFILES := $(CURDIR)/assets
 
 INCLUDES := $(PS3DEV)/portlibs/ppu/include/freetype2
 
-CFLAGS := -O2 -Wall -mcpu=cell $(MACHDEP) $(INCLUDE)
+CFLAGS := -O2 -Wall -mcpu=cell $(MACHDEP)
 CXXFLAGS := $(CFLAGS)
 
 LDFLAGS := $(MACHDEP) -Wl,-Map,$(notdir $@).map
@@ -33,10 +33,6 @@ LIBDIRS := $(PORTLIBS)
 ifeq ($(BUILD),$(notdir $(CURDIR)))
 
 DEPENDS := $(OFILES:.o=.d)
-
-$(OUTPUT).self: $(OUTPUT).elf
-
-$(OUTPUT).elf: $(OFILES)
 
 -include $(DEPENDS)
 
@@ -58,8 +54,7 @@ endif
 
 export OFILES := $(CPPFILES:.cpp=.o) $(CFILES:.c=.o)
 
-export INCLUDE := $(foreach dir,$(INCLUDES),-I$(CURDIR)/$(dir)) \
-                  -I$(PS3DEV)/portlibs/ppu/include/freetype2 \
+export INCLUDE := $(foreach dir,$(INCLUDES),-I$(dir)) \
                   $(foreach dir,$(LIBDIRS),-I$(dir)/include) \
                   $(LIBPSL1GHT_INC) \
                   -I$(CURDIR)/$(BUILD)
