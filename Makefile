@@ -17,7 +17,6 @@ APPID := BLSG00001
 
 CFLAGS := -O2 -Wall -mcpu=cell $(MACHDEP) $(INCLUDE)
 CXXFLAGS := $(CFLAGS)
-
 LDFLAGS := $(MACHDEP) -Wl,-Map,$(notdir $@).map
 
 LIBS := -lNoRSX -lgcm_sys -lrsx -lsysutil -lio -lm \
