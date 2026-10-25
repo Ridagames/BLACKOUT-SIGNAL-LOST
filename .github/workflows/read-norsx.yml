@@ -1,0 +1,28 @@
+name: Read NoRSX Source
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  read-source:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Download NoRSX example
+        run: |
+          git clone --depth 1 https://github.com/wargio/NoRSX.git /tmp/NoRSX
+
+          mkdir -p output
+
+          cp /tmp/NoRSX/NoRSX_Example/source/main.cpp output/
+          cp /tmp/NoRSX/NoRSX_Example/Makefile output/
+
+      - name: Upload source files
+        uses: actions/upload-artifact@v4
+        with:
+          name: NoRSX-source
+          path: output/
+          retention-days: 7
