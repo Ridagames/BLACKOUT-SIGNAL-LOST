@@ -16,7 +16,7 @@ int main(int argc, const char* argv[])
 
     ioPadInit(7);
 
-    NoRSX GFX(RESOLUTION_AUTO, RESOLUTION_1280x720);
+    NoRSX GFX(RESOLUTION_1280×720, RESOLUTION_1280x720);
     Background BG(&GFX);
     Font FONT(JPN, &GFX);
     Image IMG(&GFX);
