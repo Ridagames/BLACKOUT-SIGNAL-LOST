@@ -42,6 +42,14 @@ jobs:
               export PSL1GHT="$PS3DEV"
               export PATH="$PS3DEV/bin:$PS3DEV/ppu/bin:$PS3DEV/spu/bin:$PATH"
 
+              echo "=== ENVIRONNEMENT ==="
+              echo "PS3DEV=$PS3DEV"
+              echo "PSL1GHT=$PSL1GHT"
+
+              echo "=== COMPILATEUR PPU ==="
+              command -v ppu-g++
+              ppu-g++ --version
+
               echo "=== NETTOYAGE ==="
               make clean
 
@@ -53,12 +61,15 @@ jobs:
               ls -lh blackout.elf
               file blackout.elf
 
+              echo "=== EN-TETE ELF ==="
+              ppu-readelf -h blackout.elf || true
+
               echo "=== VERIFICATION SELF ==="
-              if [ -f blackout.self ]; then
+              if [ -s blackout.self ]; then
                 ls -lh blackout.self
                 file blackout.self
               else
-                echo "blackout.self absent à la racine"
+                echo "blackout.self absent ou vide à la racine"
                 find . -maxdepth 3 -name "*.self" -type f
               fi
 
