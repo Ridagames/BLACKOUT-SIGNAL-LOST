@@ -1,10 +1,9 @@
 #include <NoRSX.h>
 #include <io/pad.h>
 
-static const u32 COLOR_BG       = 0x080B10;
-static const u32 COLOR_WHITE    = 0xE6E6E6;
-static const u32 COLOR_RED      = 0xD62828;
-static const u32 COLOR_GRAY     = 0x777777;
+static const u32 GAME_BG_COLOR = 0x080B10;
+static const u32 GAME_TEXT_COLOR = 0xE6E6E6;
+static const u32 GAME_ACCENT_COLOR = 0xD62828;
 
 int main(int argc, const char* argv[])
 {
@@ -17,16 +16,14 @@ int main(int argc, const char* argv[])
     Background BG(&GFX);
     Font FONT(JPN, &GFX);
 
-    int selection = 0;
     bool running = true;
+    int selection = 0;
 
-    GFX.AppStart();
+    padInfo info;
+    padData data;
 
-    while (running && GFX.GetAppStatus())
+    while (running)
     {
-        padInfo info;
-        padData data;
-
         ioPadGetInfo(&info);
 
         if (info.status[0])
@@ -34,49 +31,36 @@ int main(int argc, const char* argv[])
             ioPadGetData(0, &data);
 
             if (data.BTN_UP)
-                selection = (selection + 2) % 3;
+                selection = 0;
 
             if (data.BTN_DOWN)
-                selection = (selection + 1) % 3;
+                selection = 1;
 
-            if (data.BTN_TRIANGLE || data.BTN_START)
-                running = false;
+            if (data.BTN_CROSS)
+            {
+                if (selection == 1)
+                    running = false;
+            }
 
-            if (data.BTN_CROSS && selection == 2)
+            if (data.BTN_CIRCLE)
                 running = false;
         }
 
-        BG.Mono(COLOR_BG);
+        BG.Mono(GAME_BG_COLOR);
 
-        FONT.Printf(90, 100, COLOR_RED, 48,
-                    "BLACKOUT");
+        FONT.Printf(100, 100, GAME_TEXT_COLOR,
+                    "BLACKOUT: SIGNAL LOST");
 
-        FONT.Printf(90, 155, COLOR_WHITE, 28,
-                    "SIGNAL LOST");
+        FONT.Printf(100, 180,
+                    selection == 0 ? GAME_ACCENT_COLOR : GAME_TEXT_COLOR,
+                    "NOUVELLE PARTIE");
 
-        FONT.Printf(90, 230, COLOR_GRAY, 22,
-                    "SURVIVAL HORROR");
+        FONT.Printf(100, 230,
+                    selection == 1 ? GAME_ACCENT_COLOR : GAME_TEXT_COLOR,
+                    "QUITTER");
 
-        FONT.Printf(110, 340,
-                    selection == 0 ? COLOR_RED : COLOR_WHITE,
-                    26, "NOUVELLE PARTIE");
-
-        FONT.Printf(110, 395,
-                    selection == 1 ? COLOR_RED : COLOR_WHITE,
-                    26, "CHARGER PARTIE");
-
-        FONT.Printf(110, 450,
-                    selection == 2 ? COLOR_RED : COLOR_WHITE,
-                    26, "QUITTER");
-
-        FONT.Printf(90, 590, COLOR_GRAY, 18,
-                    "HAUT / BAS : SELECTION");
-
-        FONT.Printf(90, 620, COLOR_GRAY, 18,
-                    "CROIX : VALIDER");
-
-        FONT.Printf(90, 650, COLOR_GRAY, 18,
-                    "TRIANGLE : QUITTER");
+        FONT.Printf(100, 650, GAME_TEXT_COLOR,
+                    "Prototype - Menu principal");
 
         GFX.Flip();
     }
