@@ -34,6 +34,10 @@ ifeq ($(BUILD),$(notdir $(CURDIR)))
 
 DEPENDS := $(OFILES:.o=.d)
 
+$(OUTPUT).elf: $(OFILES)
+
+$(OUTPUT).self: $(OUTPUT).elf
+
 -include $(DEPENDS)
 
 else
