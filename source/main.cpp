@@ -3,14 +3,32 @@
 #include <tiny3d.h>
 #include <unistd.h>
 #include <stdint.h>
+#include <stdio.h>
+#include <stdarg.h>
 
 static volatile bool running = true;
+static FILE *logFile = NULL;
+
+static void logMessage(const char *fmt, ...)
+{
+    if (!logFile) return;
+    va_list args;
+    va_start(args, fmt);
+    vfprintf(logFile, fmt, args);
+    va_end(args);
+    fputc('\n', logFile);
+    fflush(logFile);
+}
 
 static void sysCallback(u64 status, u64 param, void *userdata)
 {
     (void)param;
     (void)userdata;
-    if (status == SYSUTIL_EXIT_GAME) running = false;
+    logMessage("sysutil callback status=%llu", (unsigned long long)status);
+    if (status == SYSUTIL_EXIT_GAME) {
+        logMessage("SYSUTIL_EXIT_GAME received");
+        running = false;
+    }
 }
 
 /* Minimal 5x7 font: avoids external font assets and keeps the diagnostic build self-contained. */
@@ -68,16 +86,37 @@ static void drawText(float x, float y, const char *s, float scale, uint32_t colo
 
 int main(void)
 {
-    sysUtilRegisterCallback(0, sysCallback, NULL);
-    if (ioPadInit(7) < 0) return 1;
+    /* Keep the log outside the installed game directory; it is easier to inspect in multiMAN. */
+    logFile = fopen("/dev_hdd0/tmp/blackout_log.txt", "w");
+    if (logFile) {
+        setvbuf(logFile, NULL, _IONBF, 0);
+        logMessage("BLACKOUT diagnostic log started");
+        logMessage("stage: main entered");
+    }
 
+    sysUtilRegisterCallback(0, sysCallback, NULL);
+    logMessage("stage: sysUtilRegisterCallback done");
+
+    int padResult = ioPadInit(7);
+    logMessage("stage: ioPadInit result=%d", padResult);
+    if (padResult < 0) {
+        logMessage("ERROR: ioPadInit failed");
+        if (logFile) fclose(logFile);
+        return 1;
+    }
+
+    logMessage("stage: before tiny3d_Init");
     tiny3d_Init(1024*1024);
+    logMessage("stage: after tiny3d_Init");
+
     int selected = 0;
     padInfo padinfo;
     padData paddata;
     bool prevUp=false, prevDown=false, prevCross=false;
+    unsigned long frame = 0;
 
     while (running) {
+        if ((frame % 60) == 0) logMessage("stage: main loop frame=%lu", frame);
         sysUtilCheckCallback();
         ioPadGetInfo(&padinfo);
         if (padinfo.status[0]) {
@@ -87,10 +126,14 @@ int main(void)
             bool cross = (paddata.BTN_CROSS != 0);
             if (up && !prevUp) selected = (selected + 2) % 3;
             if (down && !prevDown) selected = (selected + 1) % 3;
-            if (cross && !prevCross && selected == 2) running = false;
+            if (cross && !prevCross && selected == 2) {
+                logMessage("stage: quit selected");
+                running = false;
+            }
             prevUp=up; prevDown=down; prevCross=cross;
         }
 
+        if (frame == 0) logMessage("stage: before first tiny3d frame");
         tiny3d_Clear(0xff080b12, TINY3D_CLEAR_ALL);
         tiny3d_Project2D();
         rect(0, 0, 848, 512, 0xff080b12);
@@ -106,8 +149,14 @@ int main(void)
         }
         drawText(48, 470, "FLECHES NAVIGUER X VALIDER", 1, 0xff9aa9bc);
         tiny3d_Flip();
+        if (frame == 0) logMessage("stage: first tiny3d_Flip returned");
+        ++frame;
         usleep(16000);
     }
+
+    logMessage("stage: cleanup");
     ioPadEnd();
+    logMessage("stage: normal exit");
+    if (logFile) fclose(logFile);
     return 0;
 }
