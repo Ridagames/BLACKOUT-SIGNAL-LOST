@@ -17,7 +17,7 @@ CONTENTID := UP0001-BLSG00001_00-0000000000000000
 
 PKGFILES := $(CURDIR)/assets
 
-INCLUDES := $(PS3DEV)/portlibs/ppu/include/freetype2
+INCLUDES := $(PS3DEV)/ppu/include $(PS3DEV)/portlibs/ppu/include/freetype2
 
 CFLAGS := -O2 -Wall -mcpu=cell $(MACHDEP)
 CXXFLAGS := $(CFLAGS)
