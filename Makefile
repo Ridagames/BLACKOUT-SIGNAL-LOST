@@ -20,7 +20,7 @@ PKGFILES := $(CURDIR)/assets
 INCLUDES := $(PS3DEV)/ppu/include $(PS3DEV)/portlibs/ppu/include/freetype2
 
 CFLAGS := -O2 -Wall -mcpu=cell $(MACHDEP)
-CXXFLAGS := $(CFLAGS)
+CXXFLAGS := $(CFLAGS) -I$(PS3DEV)/ppu/include
 
 LDFLAGS := $(MACHDEP) -Wl,-Map,$(notdir $@).map
 
