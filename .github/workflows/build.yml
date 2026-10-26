@@ -43,9 +43,10 @@ jobs:
               export PSL1GHT="$PS3DEV"
               export PATH="$PS3DEV/bin:$PS3DEV/ppu/bin:$PS3DEV/spu/bin:$PATH"
 
-              echo "=== INSTALLATION DE NoRSX ==="
-              git clone --depth 1 https://github.com/wargio/NoRSX.git /tmp/NoRSX
-              make -C /tmp/NoRSX/libNoRSX
+              echo "=== INSTALLATION DE Tiny3D ==="
+              git clone --depth 1 https://github.com/wargio/tiny3D.git /tmp/tiny3D
+              make -C /tmp/tiny3D/lib install
+              make -C /tmp/tiny3D/libfont install
 
               echo "=== ENVIRONNEMENT ==="
               echo "PS3DEV=$PS3DEV"
