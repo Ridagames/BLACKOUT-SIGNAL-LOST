@@ -60,18 +60,7 @@ jobs:
               test -s blackout.elf
               ls -lh blackout.elf
               file blackout.elf
-
-              echo "=== EN-TETE ELF ==="
               ppu-readelf -h blackout.elf || true
-
-              echo "=== VERIFICATION SELF ==="
-              if [ -s blackout.self ]; then
-                ls -lh blackout.self
-                file blackout.self
-              else
-                echo "blackout.self absent ou vide à la racine"
-                find . -maxdepth 3 -name "*.self" -type f
-              fi
 
               echo "=== CREATION PKG ==="
               make blackout.pkg
@@ -80,6 +69,14 @@ jobs:
               test -s blackout.pkg
               ls -lh blackout.pkg
               file blackout.pkg
+
+              echo "=== FICHIERS SELF ET EBOOT ==="
+              find . -maxdepth 5 -type f \
+                \( -name "*.self" -o -name "EBOOT.BIN" \) \
+                -exec ls -lh {} \;
+
+              echo "=== EMPREINTES SHA256 ==="
+              sha256sum blackout.elf blackout.pkg
 
               echo "=== BUILD TERMINE ==="
             '
