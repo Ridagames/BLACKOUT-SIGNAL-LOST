@@ -93,18 +93,18 @@ int main(void)
 
         tiny3d_Clear(0xff080b12, TINY3D_CLEAR_ALL);
         tiny3d_Project2D();
-        rect(0, 0, 1280, 720, 0xff080b12);
-        rect(60, 60, 1160, 4, 0xff26364a);
-        drawText(80, 100, "BLACKOUT", 8, 0xffe7edf5);
-        drawText(80, 190, "SIGNAL LOST", 4, 0xff4ca6ff);
+        rect(0, 0, 848, 512, 0xff080b12);
+        rect(40, 42, 768, 3, 0xff26364a);
+        drawText(48, 75, "BLACKOUT", 6, 0xffe7edf5);
+        drawText(48, 140, "SIGNAL LOST", 3, 0xff4ca6ff);
         const char *items[3] = {"JOUER", "OPTIONS", "QUITTER"};
         for (int i=0; i<3; ++i) {
             uint32_t color = (i == selected) ? 0xffffff40 : 0xffd8dee8;
-            if (i == selected) rect(75, 300 + i*72, 330, 48, 0xff182b40);
-            drawText(95, 310 + i*72, i == selected ? ">" : " ", 5, color);
-            drawText(135, 310 + i*72, items[i], 5, color);
+            if (i == selected) rect(48, 220 + i*55, 260, 38, 0xff182b40);
+            drawText(62, 228 + i*55, i == selected ? ">" : " ", 4, color);
+            drawText(92, 228 + i*55, items[i], 4, color);
         }
-        drawText(80, 640, "FLECHES NAVIGUER X VALIDER", 2, 0xff9aa9bc);
+        drawText(48, 470, "FLECHES NAVIGUER X VALIDER", 1, 0xff9aa9bc);
         tiny3d_Flip();
         usleep(16000);
     }
