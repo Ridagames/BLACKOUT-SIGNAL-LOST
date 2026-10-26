@@ -1,9 +1,9 @@
-
 #include <stdlib.h>
+#include <unistd.h>
 #include <sysutil/sysutil.h>
 #include <io/pad.h>
 
-static bool running = true;
+static volatile bool running = true;
 
 static void sysCallback(u64 status, u64 param, void *userdata)
 {
@@ -20,14 +20,17 @@ int main()
 {
     sysUtilRegisterCallback(0, sysCallback, NULL);
 
-    ioPadInit(7);
+    if (ioPadInit(7) < 0)
+    {
+        return 1;
+    }
 
     while (running)
     {
         sysUtilCheckCallback();
+        usleep(1000);
     }
 
     ioPadEnd();
-
     return 0;
 }
