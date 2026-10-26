@@ -58,7 +58,7 @@ int main()
             previousCross = cross;
         }
 
-        gfx.Clear(0x000000);
+        // NoRSX has no Clear() method; the background image covers the menu.
         image.DrawIMG(0, 0, background);
         font.Printf(90, 420, selected == 0 ? COLOR_YELLOW : COLOR_WHITE, 50, "%s JOUER", selected == 0 ? ">" : " ");
         font.Printf(90, 490, selected == 1 ? COLOR_YELLOW : COLOR_WHITE, 50, "%s OPTIONS", selected == 1 ? ">" : " ");
