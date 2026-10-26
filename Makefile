@@ -1,4 +1,3 @@
-
 .SUFFIXES:
 
 ifeq ($(strip $(PSL1GHT)),)
@@ -20,7 +19,7 @@ PKGFILES := $(CURDIR)/assets
 INCLUDES := $(PS3DEV)/ppu/include $(PS3DEV)/portlibs/ppu/include $(PS3DEV)/portlibs/ppu/include/freetype2
 
 CFLAGS := -O2 -Wall -mcpu=cell $(MACHDEP)
-CXXFLAGS := $(CFLAGS) -I$(PS3DEV)/ppu/include
+CXXFLAGS := $(CFLAGS) $(foreach dir,$(INCLUDES),-I$(dir))
 
 LDFLAGS := $(MACHDEP) -Wl,-Map,$(notdir $@).map
 
@@ -76,5 +75,4 @@ $(BUILD):
 
 clean:
 	@rm -rf $(BUILD) *.elf *.self *.pkg *.map
-
 endif
