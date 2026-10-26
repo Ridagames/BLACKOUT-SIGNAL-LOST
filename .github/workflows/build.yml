@@ -47,6 +47,9 @@ jobs:
               echo "PS3DEV=$PS3DEV"
               echo "PSL1GHT=$PSL1GHT"
 
+              echo "=== RECHERCHE DES HEADERS SYSUTIL ==="
+              find "$PS3DEV" -iname "*sysutil*.h" -o -iname "*sysutil*.hpp" | head -80
+
               echo "=== COMPILATEUR PPU ==="
               command -v ppu-g++
               ppu-g++ --version
