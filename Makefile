@@ -23,8 +23,7 @@ CXXFLAGS := $(CFLAGS) $(foreach dir,$(INCLUDES),-I$(dir))
 
 LDFLAGS := $(MACHDEP) -Wl,-Map,$(notdir $@).map
 
-LIBS := -ltiny3d -lrsx -lgcm_sys -lio -lsysutil -lrt -llv2 \\
-        -lsysmodule -lm
+LIBS := -ltiny3d -lrsx -lgcm_sys -lio -lsysutil -lrt -llv2 -lsysmodule -lm
 
 LIBDIRS := $(PORTLIBS)
 
