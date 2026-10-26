@@ -64,7 +64,16 @@ jobs:
               test -s blackout.elf
               ls -lh blackout.elf
               file blackout.elf
-              ppu-readelf -h blackout.elf || true
+              ppu-readelf -h blackout.elf
+              ppu-readelf -h blackout.elf | grep -q "Class:.*ELF64"
+              ppu-readelf -h blackout.elf | grep -q "Data:.*big endian"
+              ppu-readelf -h blackout.elf | grep -q "Type:.*EXEC"
+              ppu-readelf -h blackout.elf | grep -q "Machine:.*PowerPC64"
+              ppu-readelf -h blackout.elf | grep -q "Entry point address:.*0x"
+
+              echo "=== VERIFICATION DES SYMBOLES ET DEPENDANCES ==="
+              command -v ppu-nm
+              ppu-nm -u blackout.elf || true
 
               echo "=== CREATION PKG ==="
               make blackout.pkg
@@ -73,6 +82,8 @@ jobs:
               test -s blackout.pkg
               ls -lh blackout.pkg
               file blackout.pkg
+              test "$(stat -c %s blackout.pkg)" -gt 100000
+              test "$(stat -c %s blackout.pkg)" -lt 200000000
 
               echo "=== FICHIERS SELF ET EBOOT ==="
               find . -maxdepth 5 -type f \
