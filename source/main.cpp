@@ -1,7 +1,6 @@
 #include <io/pad.h>
 #include <sysutil/sysutil.h>
 #include <tiny3d.h>
-#include <video.h>
 #include <unistd.h>
 #include <stdint.h>
 
@@ -71,20 +70,6 @@ int main(void)
 {
     sysUtilRegisterCallback(0, sysCallback, NULL);
     if (ioPadInit(7) < 0) return 1;
-
-    /* Explicitly configure the PS3 video output before starting Tiny3D. */
-    videoResolution resolution;
-    videoConfiguration configuration;
-    if (videoGetResolution(VIDEO_RESOLUTION_720, &resolution) < 0) {
-        ioPadEnd();
-        return 1;
-    }
-    configuration.resolution = VIDEO_RESOLUTION_720;
-    configuration.format = VIDEO_BUFFER_FORMAT_XRGB;
-    configuration.pitch = resolution.width * 4;
-    configuration.aspect = VIDEO_ASPECT_16_9;
-    videoConfigure(0, &configuration, NULL);
-    videoWaitVSync();
 
     tiny3d_Init(1024*1024);
     int selected = 0;
