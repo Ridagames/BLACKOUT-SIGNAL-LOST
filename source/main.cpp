@@ -11,9 +11,7 @@ static void sysCallback(u64 status, u64 param, void *userdata)
     (void)userdata;
 
     if (status == SYSUTIL_EXIT_GAME)
-    {
         running = false;
-    }
 }
 
 int main()
@@ -21,9 +19,7 @@ int main()
     sysUtilRegisterCallback(0, sysCallback, NULL);
 
     if (ioPadInit(7) < 0)
-    {
         return 1;
-    }
 
     while (running)
     {
