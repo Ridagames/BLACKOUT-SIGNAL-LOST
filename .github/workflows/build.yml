@@ -43,6 +43,10 @@ jobs:
               export PSL1GHT="$PS3DEV"
               export PATH="$PS3DEV/bin:$PS3DEV/ppu/bin:$PS3DEV/spu/bin:$PATH"
 
+              echo "=== INSTALLATION DE NoRSX ==="
+              git clone --depth 1 https://github.com/wargio/NoRSX.git /tmp/NoRSX
+              make -C /tmp/NoRSX/libNoRSX
+
               echo "=== ENVIRONNEMENT ==="
               echo "PS3DEV=$PS3DEV"
               echo "PSL1GHT=$PSL1GHT"
