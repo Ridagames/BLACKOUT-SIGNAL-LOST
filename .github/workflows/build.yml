@@ -83,6 +83,19 @@ jobs:
               echo "=== CREATION PKG ==="
               make blackout.pkg
 
+              echo "=== VERIFICATION EBOOT.BIN NPDRM ==="
+              test -s build/pkg/USRDIR/EBOOT.BIN
+              file build/pkg/USRDIR/EBOOT.BIN
+              ls -lh build/pkg/USRDIR/EBOOT.BIN
+              command -v make_self_npdrm
+              command -v package_finalize
+              sha256sum build/pkg/USRDIR/EBOOT.BIN
+
+              echo "=== VERIFICATION PARAM.SFO ==="
+              test -s build/pkg/PARAM.SFO
+              file build/pkg/PARAM.SFO
+              ls -lh build/pkg/PARAM.SFO
+
               echo "=== VERIFICATION PKG ==="
               test -s blackout.pkg
               ls -lh blackout.pkg
@@ -91,8 +104,8 @@ jobs:
               test "$(stat -c %s blackout.pkg)" -lt 200000000
 
               echo "=== FICHIERS SELF ET EBOOT ==="
-              find . -maxdepth 5 -type f \
-                \( -name "*.self" -o -name "EBOOT.BIN" \) \
+              find build -maxdepth 5 -type f \
+                \( -name "*.self" -o -name "EBOOT.BIN" -o -name "PARAM.SFO" \) \
                 -exec ls -lh {} \;
 
               echo "=== EMPREINTES SHA256 ==="
