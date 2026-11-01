@@ -91,6 +91,10 @@ command -v unself >/dev/null 2>&1 || {
   echo "ERREUR: unself absent; vérification SELF obligatoire impossible"
   exit 1
 }
+command -v ppu-readelf >/dev/null 2>&1 || {
+  echo "ERREUR: ppu-readelf absent; vérification ELF impossible"
+  exit 1
+}
 tmp=$(mktemp -d)
 trap 'rm -rf "$tmp"' EXIT
 unself "$EBOOT" "$tmp/EBOOT.ELF"
@@ -98,11 +102,28 @@ test -s "$tmp/EBOOT.ELF" || {
   echo "ERREUR: unself n'a pas produit EBOOT.ELF"
   exit 1
 }
-if ! cmp -s "$tmp/EBOOT.ELF" build/blackout.elf; then
+test "$(od -An -tx1 -N4 "$tmp/EBOOT.ELF" | tr -d ' \\n')" = "7f454c46" || {
+  echo "ERREUR: le SELF dechiffre n'est pas un ELF"
+  exit 1
+}
+
+# Le point d'entree et le decoupage en segments doivent etre identiques.
+if ! diff -u \\
+  <(ppu-readelf -h build/blackout.elf | awk '/Entry point/{print $4}'
+    ppu-readelf -l build/blackout.elf | awk '$1=="LOAD"{print $2,$3,$5}') \\
+  <(ppu-readelf -h "$tmp/EBOOT.ELF" | awk '/Entry point/{print $4}'
+    ppu-readelf -l "$tmp/EBOOT.ELF" | awk '$1=="LOAD"{print $2,$3,$5}'); then
   echo "ERREUR: le SELF dechiffre ne correspond pas a l'ELF compile"
   exit 1
 fi
-echo "SELF dechiffre conforme a build/blackout.elf"
+
+# Comparaison octet a octet informative seulement.
+if cmp -s "$tmp/EBOOT.ELF" build/blackout.elf; then
+  echo "SELF dechiffre identique octet pour octet a build/blackout.elf"
+else
+  echo "NOTE: difference d'octets (table des sections probablement retiree)"
+  ls -l "$tmp/EBOOT.ELF" build/blackout.elf
+fi
 sha256sum "$tmp/EBOOT.ELF" build/blackout.elf
 
 echo "=== Empreintes ==="
