@@ -94,6 +94,12 @@ jobs:
                 exit 1
               fi
 
+              echo "=== PUBLICATION DU PKG FINALISE SOUS blackout.pkg ==="
+              cp blackout.gnpdrm.pkg blackout.pkg
+              test -s blackout.pkg
+              cmp -s blackout.pkg blackout.gnpdrm.pkg
+              bash tools/verify_pkg.sh blackout.pkg blackout.gnpdrm.pkg
+
               echo "=== VERIFICATION EBOOT NPDRM ==="
               test -s build/pkg/USRDIR/EBOOT.BIN
               file build/pkg/USRDIR/EBOOT.BIN
