@@ -36,49 +36,74 @@ python3 - "$SFO" "$EXPECTED_CONTENT_ID" <<'PY'
 import struct, sys
 path, expected_content_id = sys.argv[1], sys.argv[2]
 data = open(path, "rb").read()
-if len(data) < 20 or data[:4] != b"\x00PSF":
+if len(data) < 20:
+    raise SystemExit("ERREUR: PARAM.SFO trop court")
+magic, version, key_off, data_off, count = struct.unpack_from("<5I", data, 0)
+if magic != 0x46535000:
     raise SystemExit("ERREUR: signature PARAM.SFO invalide")
-_, key_off, data_off, count = struct.unpack_from("<4I", data, 0)
+if not (0 < count < 256):
+    raise SystemExit(f"ERREUR: nombre d'entrees SFO aberrant: {count}")
 entries = {}
 for i in range(count):
     pos = 20 + i * 16
     if pos + 16 > len(data):
-        raise SystemExit("ERREUR: table SFO tronquée")
+        raise SystemExit("ERREUR: table SFO tronquee")
     key_rel, fmt, length, max_len, value_rel = struct.unpack_from("<HHIII", data, pos)
     kp, vp = key_off + key_rel, data_off + value_rel
     if kp >= len(data) or vp + length > len(data):
         raise SystemExit("ERREUR: offset SFO hors limites")
-    end = data.find(b"\0", kp)
-    if end < 0:
-        raise SystemExit("ERREUR: clé SFO non terminée")
-    key = data[kp:end].decode("ascii", "replace")
-    raw = data[vp:vp+length].split(b"\0", 1)[0]
-    entries[key] = raw.decode("utf-8", "replace")
-for key in ("CATEGORY", "TITLE_ID", "CONTENT_ID"):
-    if key not in entries:
-        raise SystemExit("ERREUR: champ SFO manquant: " + key)
+    end_key = data.find(b"\\0", kp)
+    if end_key < 0:
+        raise SystemExit("ERREUR: cle SFO non terminee")
+    key = data[kp:end_key].decode("ascii", "replace")
+    raw = data[vp:vp+length]
+    if fmt == 4:
+        if len(raw) != 4:
+            raise SystemExit("ERREUR: entier SFO de taille invalide: " + key)
+        entries[key] = struct.unpack("<i", raw)[0]
+    else:
+        entries[key] = raw.split(b"\\0", 1)[0].decode("utf-8", "replace")
+required = ("ATTRIBUTE","BOOTABLE","CATEGORY","CONTENT_ID","PARENTAL_LEVEL",
+            "PS3_SYSTEM_VER","RESOLUTION","SOUND_FORMAT","TITLE","TITLE_ID",
+            "VERSION","LICENSE")
+missing = [k for k in required if k not in entries]
+if missing:
+    raise SystemExit("ERREUR: champs SFO manquants: " + ", ".join(missing))
 if entries["CATEGORY"] != "HG":
-    raise SystemExit("ERREUR: CATEGORY doit être HG, reçu " + repr(entries["CATEGORY"]))
+    raise SystemExit("ERREUR: CATEGORY doit etre HG, recu " + repr(entries["CATEGORY"]))
+if entries["BOOTABLE"] != 1:
+    raise SystemExit("ERREUR: BOOTABLE doit valoir 1, recu " + repr(entries["BOOTABLE"]))
 if entries["TITLE_ID"] != "BLSG00001":
     raise SystemExit("ERREUR: TITLE_ID inattendu: " + repr(entries["TITLE_ID"]))
 if entries["CONTENT_ID"] != expected_content_id:
     raise SystemExit("ERREUR: CONTENT_ID SFO inattendu: " + repr(entries["CONTENT_ID"]))
+if entries["PS3_SYSTEM_VER"] > "04.9100":
+    raise SystemExit("ERREUR: PS3_SYSTEM_VER " + entries["PS3_SYSTEM_VER"] + " > 04.9100")
 print("CATEGORY =", entries["CATEGORY"])
+print("BOOTABLE =", entries["BOOTABLE"])
 print("TITLE_ID =", entries["TITLE_ID"])
 print("CONTENT_ID =", entries["CONTENT_ID"])
+print("PS3_SYSTEM_VER =", entries["PS3_SYSTEM_VER"])
 PY
 
-echo "=== Outils de dépaquetage SELF ==="
-if command -v unself >/dev/null 2>&1; then
-  echo "unself disponible: $(command -v unself)"
-  tmp=$(mktemp -d)
-  trap 'rm -rf "$tmp"' EXIT
-  unself "$EBOOT" "$tmp/EBOOT.ELF"
-  test -s "$tmp/EBOOT.ELF"
-  sha256sum "$tmp/EBOOT.ELF"
-else
-  echo "AVERTISSEMENT: unself absent; contrôle de déchiffrement SELF non exécuté."
+echo "=== Déchiffrement et comparaison SELF/ELF ==="
+command -v unself >/dev/null 2>&1 || {
+  echo "ERREUR: unself absent; vérification SELF obligatoire impossible"
+  exit 1
+}
+tmp=$(mktemp -d)
+trap 'rm -rf "$tmp"' EXIT
+unself "$EBOOT" "$tmp/EBOOT.ELF"
+test -s "$tmp/EBOOT.ELF" || {
+  echo "ERREUR: unself n'a pas produit EBOOT.ELF"
+  exit 1
+}
+if ! cmp -s "$tmp/EBOOT.ELF" build/blackout.elf; then
+  echo "ERREUR: le SELF dechiffre ne correspond pas a l'ELF compile"
+  exit 1
 fi
+echo "SELF dechiffre conforme a build/blackout.elf"
+sha256sum "$tmp/EBOOT.ELF" build/blackout.elf
 
 echo "=== Empreintes ==="
 sha256sum "$PKG" "$SOURCE_PKG" "$EBOOT" "$SFO"
