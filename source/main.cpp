@@ -21,6 +21,12 @@ static void logMessage(const char *fmt, ...)
     fflush(logFile);
 }
 
+/* Both a fresh load and an already-loaded module are successful states. */
+static bool moduleOk(int result)
+{
+    return result == SYSMODULE_LOADED || result == (int)SYSMODULE_ERR_DUPLICATE;
+}
+
 static void sysCallback(u64 status, u64 param, void *userdata)
 {
     (void)param;
@@ -87,21 +93,21 @@ static void drawText(float x, float y, const char *s, float scale, uint32_t colo
 
 int main(void)
 {
-    int res = sysModuleLoad(CELL_SYSMODULE_FS);
-    if (res < 0) return 1;
+    int res;
 
-    /* Keep the log outside the installed game directory; it is easier to inspect in multiMAN. */
+    res = sysModuleLoad(SYSMODULE_FS);
     logFile = fopen("/dev_hdd0/tmp/blackout_log.txt", "w");
     if (logFile) {
         setvbuf(logFile, NULL, _IONBF, 0);
         logMessage("BLACKOUT diagnostic log started");
         logMessage("stage: main entered");
     }
+    logMessage("stage: FS res=%d ok=%d", res, moduleOk(res));
 
-    res = sysModuleLoad(CELL_SYSMODULE_SYSUTIL);
-    logMessage("stage: SYSUTIL module res=%d", res);
-    if (res < 0) {
-        logMessage("ERROR: SYSUTIL module load failed");
+    res = sysModuleLoad(SYSMODULE_SYSUTIL);
+    logMessage("stage: SYSUTIL res=%d ok=%d", res, moduleOk(res));
+    if (!moduleOk(res)) {
+        logMessage("ERROR: SYSUTIL");
         if (logFile) fclose(logFile);
         return 1;
     }
@@ -109,10 +115,10 @@ int main(void)
     sysUtilRegisterCallback(0, sysCallback, NULL);
     logMessage("stage: sysUtilRegisterCallback done");
 
-    res = sysModuleLoad(CELL_SYSMODULE_IO);
-    logMessage("stage: IO module res=%d", res);
-    if (res < 0) {
-        logMessage("ERROR: IO module load failed");
+    res = sysModuleLoad(SYSMODULE_IO);
+    logMessage("stage: IO res=%d ok=%d", res, moduleOk(res));
+    if (!moduleOk(res)) {
+        logMessage("ERROR: IO");
         if (logFile) fclose(logFile);
         return 1;
     }
@@ -125,19 +131,10 @@ int main(void)
         return 1;
     }
 
-    res = sysModuleLoad(CELL_SYSMODULE_GCM_SYS);
-    logMessage("stage: GCM_SYS module res=%d", res);
-    if (res < 0) {
-        logMessage("ERROR: GCM_SYS module load failed");
-        ioPadEnd();
-        if (logFile) fclose(logFile);
-        return 2;
-    }
-
-    res = sysModuleLoad(CELL_SYSMODULE_RSX);
-    logMessage("stage: RSX module res=%d", res);
-    if (res < 0) {
-        logMessage("ERROR: RSX module load failed");
+    res = sysModuleLoad(SYSMODULE_GCM_SYS);
+    logMessage("stage: GCM_SYS res=%d ok=%d", res, moduleOk(res));
+    if (!moduleOk(res)) {
+        logMessage("ERROR: GCM_SYS");
         ioPadEnd();
         if (logFile) fclose(logFile);
         return 2;
