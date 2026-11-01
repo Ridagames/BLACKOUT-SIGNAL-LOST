@@ -2,7 +2,6 @@
 #include <sysutil/sysutil.h>
 #include <sysmodule/sysmodule.h>
 #include <tiny3d.h>
-#include <unistd.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <stdarg.h>
@@ -161,17 +160,18 @@ int main(void)
         sysUtilCheckCallback();
         ioPadGetInfo(&padinfo);
         if (padinfo.status[0]) {
-            ioPadGetData(0, &paddata);
-            bool up = (paddata.BTN_UP != 0);
-            bool down = (paddata.BTN_DOWN != 0);
-            bool cross = (paddata.BTN_CROSS != 0);
-            if (up && !prevUp) selected = (selected + 2) % 3;
-            if (down && !prevDown) selected = (selected + 1) % 3;
-            if (cross && !prevCross && selected == 2) {
-                logMessage("stage: quit selected");
-                running = false;
+            if (ioPadGetData(0, &paddata) >= 0) {
+                bool up = (paddata.BTN_UP != 0);
+                bool down = (paddata.BTN_DOWN != 0);
+                bool cross = (paddata.BTN_CROSS != 0);
+                if (up && !prevUp) selected = (selected + 2) % 3;
+                if (down && !prevDown) selected = (selected + 1) % 3;
+                if (cross && !prevCross && selected == 2) {
+                    logMessage("stage: quit selected");
+                    running = false;
+                }
+                prevUp=up; prevDown=down; prevCross=cross;
             }
-            prevUp=up; prevDown=down; prevCross=cross;
         }
 
         if (frame == 0) logMessage("stage: before first tiny3d frame");
