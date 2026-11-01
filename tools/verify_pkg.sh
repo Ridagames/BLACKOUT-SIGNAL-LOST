@@ -52,7 +52,7 @@ for i in range(count):
     kp, vp = key_off + key_rel, data_off + value_rel
     if kp >= len(data) or vp + length > len(data):
         raise SystemExit("ERREUR: offset SFO hors limites")
-    end_key = data.find(b"\\0", kp)
+    end_key = data.find(bytes([0]), kp)
     if end_key < 0:
         raise SystemExit("ERREUR: cle SFO non terminee")
     key = data[kp:end_key].decode("ascii", "replace")
@@ -62,7 +62,7 @@ for i in range(count):
             raise SystemExit("ERREUR: entier SFO de taille invalide: " + key)
         entries[key] = struct.unpack("<i", raw)[0]
     else:
-        entries[key] = raw.split(b"\\0", 1)[0].decode("utf-8", "replace")
+        entries[key] = raw.split(bytes([0]), 1)[0].decode("utf-8", "replace")
 required = ("ATTRIBUTE","BOOTABLE","CATEGORY","CONTENT_ID","PARENTAL_LEVEL",
             "PS3_SYSTEM_VER","RESOLUTION","SOUND_FORMAT","TITLE","TITLE_ID",
             "VERSION","LICENSE")
