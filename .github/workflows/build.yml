@@ -43,7 +43,9 @@ jobs:
               export PATH="$PS3DEV/bin:$PS3DEV/ppu/bin:$PS3DEV/spu/bin:$PATH"
 
               echo "=== INSTALLATION DE Tiny3D ==="
-              git clone --depth 1 https://github.com/wargio/tiny3D.git /tmp/tiny3D
+              git clone https://github.com/wargio/tiny3D.git /tmp/tiny3D
+              git -C /tmp/tiny3D checkout 9b02ae6e9f21ff15185f8a3846bdca5304d7e0ae
+              test -f /tmp/tiny3D/libfont/Makefile
               make -C /tmp/tiny3D/lib install
               make -C /tmp/tiny3D/libfont install
 
