@@ -1,5 +1,6 @@
 #include <io/pad.h>
 #include <sysutil/sysutil.h>
+#include <sysmodule/sysmodule.h>
 #include <tiny3d.h>
 #include <unistd.h>
 #include <stdint.h>
@@ -86,6 +87,9 @@ static void drawText(float x, float y, const char *s, float scale, uint32_t colo
 
 int main(void)
 {
+    int res = sysModuleLoad(CELL_SYSMODULE_FS);
+    if (res < 0) return 1;
+
     /* Keep the log outside the installed game directory; it is easier to inspect in multiMAN. */
     logFile = fopen("/dev_hdd0/tmp/blackout_log.txt", "w");
     if (logFile) {
@@ -94,8 +98,24 @@ int main(void)
         logMessage("stage: main entered");
     }
 
+    res = sysModuleLoad(CELL_SYSMODULE_SYSUTIL);
+    logMessage("stage: SYSUTIL module res=%d", res);
+    if (res < 0) {
+        logMessage("ERROR: SYSUTIL module load failed");
+        if (logFile) fclose(logFile);
+        return 1;
+    }
+
     sysUtilRegisterCallback(0, sysCallback, NULL);
     logMessage("stage: sysUtilRegisterCallback done");
+
+    res = sysModuleLoad(CELL_SYSMODULE_IO);
+    logMessage("stage: IO module res=%d", res);
+    if (res < 0) {
+        logMessage("ERROR: IO module load failed");
+        if (logFile) fclose(logFile);
+        return 1;
+    }
 
     int padResult = ioPadInit(7);
     logMessage("stage: ioPadInit result=%d", padResult);
@@ -105,9 +125,33 @@ int main(void)
         return 1;
     }
 
+    res = sysModuleLoad(CELL_SYSMODULE_GCM_SYS);
+    logMessage("stage: GCM_SYS module res=%d", res);
+    if (res < 0) {
+        logMessage("ERROR: GCM_SYS module load failed");
+        ioPadEnd();
+        if (logFile) fclose(logFile);
+        return 2;
+    }
+
+    res = sysModuleLoad(CELL_SYSMODULE_RSX);
+    logMessage("stage: RSX module res=%d", res);
+    if (res < 0) {
+        logMessage("ERROR: RSX module load failed");
+        ioPadEnd();
+        if (logFile) fclose(logFile);
+        return 2;
+    }
+
     logMessage("stage: before tiny3d_Init");
-    tiny3d_Init(1024*1024);
-    logMessage("stage: after tiny3d_Init");
+    res = tiny3d_Init(1024*1024);
+    logMessage("stage: tiny3d_Init res=%d", res);
+    if (res != TINY3D_OK) {
+        logMessage("ERROR: tiny3d_Init failed");
+        ioPadEnd();
+        if (logFile) fclose(logFile);
+        return 2;
+    }
 
     int selected = 0;
     padInfo padinfo;
@@ -151,11 +195,11 @@ int main(void)
         tiny3d_Flip();
         if (frame == 0) logMessage("stage: first tiny3d_Flip returned");
         ++frame;
-        usleep(16000);
     }
 
     logMessage("stage: cleanup");
     ioPadEnd();
+    tiny3d_Exit();
     logMessage("stage: normal exit");
     if (logFile) fclose(logFile);
     return 0;
