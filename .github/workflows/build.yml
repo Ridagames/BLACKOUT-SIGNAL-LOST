@@ -1,4 +1,3 @@
-
 name: Build PS3 Homebrew
 
 on:
@@ -52,9 +51,6 @@ jobs:
               echo "PS3DEV=$PS3DEV"
               echo "PSL1GHT=$PSL1GHT"
 
-              echo "=== RECHERCHE DES HEADERS SYSUTIL ==="
-              find "$PS3DEV" -iname "*sysutil*.h" -o -iname "*sysutil*.hpp" | head -80
-
               echo "=== COMPILATEUR PPU ==="
               command -v ppu-g++
               ppu-g++ --version
@@ -76,14 +72,29 @@ jobs:
               ppu-readelf -h blackout.elf | grep -q "Machine:.*PowerPC64"
               ppu-readelf -h blackout.elf | grep -q "Entry point address:.*0x"
 
-              echo "=== VERIFICATION DES SYMBOLES ET DEPENDANCES ==="
+              echo "=== SYMBOLES ET DEPENDANCES ==="
               command -v ppu-nm
               ppu-nm -u blackout.elf || true
 
-              echo "=== CREATION PKG ==="
+              echo "=== GENERATION DU PKG PSL1GHT ==="
               make blackout.pkg
 
-              echo "=== VERIFICATION EBOOT.BIN NPDRM ==="
+              echo "=== VERIFICATION DES DEUX PKG ==="
+              test -s blackout.pkg
+              test -s blackout.gnpdrm.pkg
+              ls -lh blackout.pkg blackout.gnpdrm.pkg
+              file blackout.pkg blackout.gnpdrm.pkg
+              sha256sum blackout.pkg blackout.gnpdrm.pkg
+
+              echo "=== VERIFICATION DU PKG FINALISE ==="
+              test "$(stat -c %s blackout.gnpdrm.pkg)" -gt 100000
+              test "$(stat -c %s blackout.gnpdrm.pkg)" -lt 200000000
+              if cmp -s blackout.pkg blackout.gnpdrm.pkg; then
+                echo "ERREUR: package_finalize na pas modifie le PKG"
+                exit 1
+              fi
+
+              echo "=== VERIFICATION EBOOT NPDRM ==="
               test -s build/pkg/USRDIR/EBOOT.BIN
               file build/pkg/USRDIR/EBOOT.BIN
               ls -lh build/pkg/USRDIR/EBOOT.BIN
@@ -96,31 +107,29 @@ jobs:
               file build/pkg/PARAM.SFO
               ls -lh build/pkg/PARAM.SFO
 
-              echo "=== VERIFICATION PKG ==="
-              test -s blackout.pkg
-              ls -lh blackout.pkg
-              file blackout.pkg
-              test "$(stat -c %s blackout.pkg)" -gt 100000
-              test "$(stat -c %s blackout.pkg)" -lt 200000000
-
-              echo "=== FICHIERS SELF ET EBOOT ==="
-              find build -maxdepth 5 -type f \
-                \( -name "*.self" -o -name "EBOOT.BIN" -o -name "PARAM.SFO" \) \
-                -exec ls -lh {} \;
-
-              echo "=== EMPREINTES SHA256 ==="
-              sha256sum blackout.elf blackout.pkg
+              echo "=== EMPREINTES FINALES ==="
+              sha256sum blackout.elf build/blackout.elf build/pkg/USRDIR/EBOOT.BIN blackout.pkg blackout.gnpdrm.pkg
 
               echo "=== BUILD TERMINE ==="
             '
 
+      - name: Prepare clearly named HEN package
+        run: |
+          set -eu
+          test -s blackout.gnpdrm.pkg
+          cp blackout.gnpdrm.pkg BLACKOUT-SIGNAL-LOST-HEN.pkg
+          test -s BLACKOUT-SIGNAL-LOST-HEN.pkg
+          sha256sum BLACKOUT-SIGNAL-LOST-HEN.pkg
+
       - name: Upload build files
         uses: actions/upload-artifact@v4
         with:
-          name: blackout-ps3-diagnostic
+          name: blackout-ps3-hen-build
           path: |
+            BLACKOUT-SIGNAL-LOST-HEN.pkg
+            blackout.gnpdrm.pkg
+            blackout.pkg
             blackout.elf
             blackout.self
-            blackout.pkg
           if-no-files-found: warn
           retention-days: 14
