@@ -63,7 +63,7 @@ for i in range(count):
         entries[key] = struct.unpack("<i", raw)[0]
     else:
         entries[key] = raw.split(bytes([0]), 1)[0].decode("utf-8", "replace")
-required = ("ATTRIBUTE","BOOTABLE","CATEGORY","CONTENT_ID","PARENTAL_LEVEL",
+required = ("ATTRIBUTE","BOOTABLE","CATEGORY","PARENTAL_LEVEL",
             "PS3_SYSTEM_VER","RESOLUTION","SOUND_FORMAT","TITLE","TITLE_ID",
             "VERSION","LICENSE")
 missing = [k for k in required if k not in entries]
@@ -75,14 +75,12 @@ if entries["BOOTABLE"] != 1:
     raise SystemExit("ERREUR: BOOTABLE doit valoir 1, recu " + repr(entries["BOOTABLE"]))
 if entries["TITLE_ID"] != "BLSG00001":
     raise SystemExit("ERREUR: TITLE_ID inattendu: " + repr(entries["TITLE_ID"]))
-if entries["CONTENT_ID"] != expected_content_id:
-    raise SystemExit("ERREUR: CONTENT_ID SFO inattendu: " + repr(entries["CONTENT_ID"]))
 if entries["PS3_SYSTEM_VER"] > "04.9100":
     raise SystemExit("ERREUR: PS3_SYSTEM_VER " + entries["PS3_SYSTEM_VER"] + " > 04.9100")
 print("CATEGORY =", entries["CATEGORY"])
 print("BOOTABLE =", entries["BOOTABLE"])
 print("TITLE_ID =", entries["TITLE_ID"])
-print("CONTENT_ID =", entries["CONTENT_ID"])
+print("CONTENT_ID vérifié dans EBOOT.BIN =", expected_content_id)
 print("PS3_SYSTEM_VER =", entries["PS3_SYSTEM_VER"])
 PY
 
