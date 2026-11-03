@@ -43,7 +43,6 @@ jobs:
           make clean
           make V=1
           test -s eboot.bin
-          file eboot.bin
           test -s IV0000-BLSG00001_00-0000000000000001.pkg
           ls -lh IV0000-BLSG00001_00-0000000000000001.pkg
           sha256sum eboot.bin IV0000-BLSG00001_00-0000000000000001.pkg
