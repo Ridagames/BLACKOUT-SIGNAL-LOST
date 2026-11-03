@@ -1,47 +1,34 @@
-# BLACKOUT: SIGNAL LOST — PS3 Homebrew
+# BLACKOUT: SIGNAL LOST — PS4 Homebrew
 
-Prototype de jeu d'horreur/survie à la première personne pour PS3 homebrew (cible HEN).
-**État : squelette de projet / première étape de compilation, pas encore un jeu 3D complet.**
+Projet homebrew PS4 de survival horror à la première personne.
 
-## Chaîne technique vérifiée
+## Direction du jeu
 
-- SDK : [ps3dev/PSL1GHT](https://github.com/ps3dev/PSL1GHT)
-- Environnement complet : [ps3dev/ps3dev](https://github.com/ps3dev/ps3dev)
-- Une application PSL1GHT peut produire `.elf` / `.self`; les projets qui définissent une cible de paquet peuvent produire un `.pkg`.
-- La compatibilité finale du PKG doit être testée sur une PS3 HEN réelle. GitHub Actions ne peut pas valider le lancement sur console.
+- Survival horror inspiré des classiques du genre.
+- Vue à la première personne.
+- Munitions rares : la fuite et la discrétion priment sur le combat.
+- Exploration, énigmes, histoire, ambiance sonore et tension.
+- Commandes DualShock 4.
 
-## Projet
+## Plateforme et compilation
 
-- `src/main.c` : point d'entrée initial, avec boucle de vie simple.
-- `Makefile` : attend les règles PSL1GHT installées dans l'environnement.
-- `.github/workflows/build.yml` : lance la compilation dans une image Docker PS3DEV, puis publie les fichiers générés en artefacts.
-- `assets/README.md` : conventions pour les ressources du jeu.
+- Cible : PlayStation 4.
+- Toolchain : [OpenOrbis PS4 Toolchain](https://github.com/OpenOrbis/OpenOrbis-PS4-Toolchain), version 0.5.4.
+- Langage : C++.
+- Compilation : GitHub Actions.
+- Sortie attendue : `eboot.bin` et paquet `.pkg`.
 
-## Compiler sur GitHub
+La branche de portage est `ps4/port`. La branche `main` et l'ancienne branche PS3 ne sont pas modifiées.
 
-1. Crée un dépôt GitHub vide et téléverse le contenu de cette archive.
-2. Ouvre **Actions** et active les workflows si GitHub le demande.
-3. Lance **Build PS3 Homebrew** avec **Run workflow**, ou pousse un commit sur `main`.
-4. Télécharge les artefacts `blackout-ps3-build` depuis l'exécution.
+## Compiler
 
-Le workflow est une base CI. L'image de compilation et les cibles Makefile peuvent nécessiter un ajustement si l'image Docker amont ou les règles PSL1GHT changent.
+1. Ouvrir l'onglet **Actions** du dépôt.
+2. Sélectionner **Build BLACKOUT PS4**.
+3. Cliquer sur **Run workflow** et choisir la branche `ps4/port`.
+4. Récupérer l'artefact **BLACKOUT-SIGNAL-LOST-PS4** si la compilation réussit.
 
-## Compiler localement
+## État actuel
 
-Dans un environnement PS3DEV configuré (`PS3DEV` et `PSL1GHT` exportés), exécute :
+Cette conversion initialise une base OpenOrbis PS4 et son pipeline de compilation. Ce n'est pas encore le jeu complet : le rendu 3D, le contrôleur, le menu interactif, le niveau, les ennemis, les sons et les sauvegardes restent à développer et tester sur console.
 
-```sh
-make
-```
-
-Pour produire un PKG, la cible `pkg` doit être prise en charge par les règles PSL1GHT et le Makefile de l'application. Ne renomme pas simplement un `.elf` en `.pkg`.
-
-## Feuille de route
-
-1. Valider la compilation de base et l'exécution homebrew sur console.
-2. Ajouter le rendu 3D et la gestion de la manette avec une bibliothèque graphique PS3 compatible.
-3. Ajouter caméra FPS, collisions, lampe torche et première salle.
-4. Ajouter sons, portes, objets, sauvegarde et niveaux.
-5. Ajouter des ressources originales optimisées pour la mémoire de la PS3.
-
-Un jeu de plusieurs Go exige de vraies ressources (modèles, textures, sons, niveaux) et des tests de performance. Cette archive ne prétend pas déjà les contenir.
+Un PKG compilé n'est pas une garantie de compatibilité avec un firmware donné. L'installation et l'exécution nécessitent un environnement PS4 compatible homebrew.
