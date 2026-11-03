@@ -1,11 +1,8 @@
-
-name: Build PS3 Homebrew
+name: Build PS4 Homebrew
 
 on:
   push:
-    branches:
-      - main
-      - master
+    branches: [main, master, "ps4/**", "diagnostic/**"]
   workflow_dispatch:
 
 permissions:
@@ -15,79 +12,37 @@ jobs:
   build:
     runs-on: ubuntu-latest
     timeout-minutes: 60
-
+    container:
+      image: openorbis/openorbis-sdk:latest
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      - name: Check project files
+      - name: Vérif projet
         run: |
           set -eu
           test -f Makefile
           test -f source/main.cpp
           test -s assets/USRDIR/BLACKOUT_MENU.png
+          test -s sce_sys/about/right.sprx
+          test -s sce_sys/icon0.png
 
-      - name: Build and inspect PS3 files
+      - name: Build
         run: |
           set -eu
+          export OO_PS4_TOOLCHAIN=/opt/openorbis
+          export PATH="$OO_PS4_TOOLCHAIN/bin/linux:$PATH"
+          make clean
+          make V=1
+          test -s eboot.bin
+          file eboot.bin
+          test -s IV0000-BLSG00001_00-0000000000000001.pkg
+          ls -lh IV0000-BLSG00001_00-0000000000000001.pkg
+          sha256sum eboot.bin IV0000-BLSG00001_00-0000000000000001.pkg
 
-          docker run --rm \
-            -v "$PWD:/workspace" \
-            -w /workspace \
-            hldtux/ps3dev:latest \
-            bash -lc '
-              set -eu
-
-              export PS3DEV=/usr/local/ps3dev
-              export PSL1GHT="$PS3DEV"
-              export PATH="$PS3DEV/bin:$PS3DEV/ppu/bin:$PS3DEV/spu/bin:$PATH"
-
-              echo "=== ENVIRONNEMENT ==="
-              echo "PS3DEV=$PS3DEV"
-              echo "PSL1GHT=$PSL1GHT"
-
-              echo "=== COMPILATEUR PPU ==="
-              command -v ppu-g++
-              ppu-g++ --version
-
-              echo "=== NETTOYAGE ==="
-              make clean
-
-              echo "=== COMPILATION ==="
-              make V=1
-
-              echo "=== VERIFICATION ELF ==="
-              test -s blackout.elf
-              ls -lh blackout.elf
-              file blackout.elf
-              ppu-readelf -h blackout.elf || true
-
-              echo "=== CREATION PKG ==="
-              make blackout.pkg
-
-              echo "=== VERIFICATION PKG ==="
-              test -s blackout.pkg
-              ls -lh blackout.pkg
-              file blackout.pkg
-
-              echo "=== FICHIERS SELF ET EBOOT ==="
-              find . -maxdepth 5 -type f \
-                \( -name "*.self" -o -name "EBOOT.BIN" \) \
-                -exec ls -lh {} \;
-
-              echo "=== EMPREINTES SHA256 ==="
-              sha256sum blackout.elf blackout.pkg
-
-              echo "=== BUILD TERMINE ==="
-            '
-
-      - name: Upload build files
-        uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v4
         with:
-          name: blackout-ps3-diagnostic
+          name: blackout-pkg
           path: |
-            blackout.elf
-            blackout.self
-            blackout.pkg
-          if-no-files-found: warn
+            eboot.bin
+            IV0000-BLSG00001_00-0000000000000001.pkg
           retention-days: 14
