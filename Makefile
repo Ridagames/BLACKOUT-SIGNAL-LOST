@@ -1,5 +1,5 @@
 # BLACKOUT: SIGNAL LOST — PS4 / OpenOrbis
-# Build aligned with OpenOrbis official samples/hello_world.
+# Minimal PS4 package: executable, param.sfo and menu asset.
 
 TITLE       := BLACKOUT - SIGNAL LOST
 VERSION     := 01.00
@@ -70,12 +70,10 @@ sce_sys/param.sfo: Makefile
 	$(TOOLCHAIN)/bin/$(CDIR)/PkgTool.Core sfo_setentry $@ TITLE_ID --type Utf8 --maxsize 12 --value '$(TITLE_ID)'
 	$(TOOLCHAIN)/bin/$(CDIR)/PkgTool.Core sfo_setentry $@ VERSION --type Utf8 --maxsize 8 --value '$(VERSION)'
 
-pkg.gp4: eboot.bin sce_sys/about/right.sprx sce_sys/param.sfo sce_sys/icon0.png assets/USRDIR/BLACKOUT_MENU.png
+pkg.gp4: eboot.bin sce_sys/param.sfo assets/USRDIR/BLACKOUT_MENU.png
 	$(TOOLCHAIN)/bin/$(CDIR)/create-gp4 -out $@ --content-id=$(CONTENT_ID) \
 		--files "eboot.bin=eboot.bin" \
 		--files "sce_sys/param.sfo=sce_sys/param.sfo" \
-		--files "sce_sys/icon0.png=sce_sys/icon0.png" \
-		--files "sce_sys/about/right.sprx=sce_sys/about/right.sprx" \
 		--files "assets/USRDIR/BLACKOUT_MENU.png=USRDIR/BLACKOUT_MENU.png"
 
 $(CONTENT_ID).pkg: pkg.gp4
