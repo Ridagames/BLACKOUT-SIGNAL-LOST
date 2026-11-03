@@ -18,7 +18,8 @@ CPPFILES    := $(wildcard $(PROJDIR)/*.cpp)
 OBJS        := $(patsubst $(PROJDIR)/%.c,$(INTDIR)/%.o,$(CFILES)) $(patsubst $(PROJDIR)/%.cpp,$(INTDIR)/%.o,$(CPPFILES))
 
 CFLAGS      := --target=x86_64-pc-freebsd12-elf -fPIC -funwind-tables -c $(EXTRAFLAGS) -isysroot $(TOOLCHAIN) -isystem $(TOOLCHAIN)/include
-CXXFLAGS    := $(CFLAGS) -isystem $(TOOLCHAIN)/include/c++/v1
+COMMONDIR   := $(TOOLCHAIN)/samples/_common
+CXXFLAGS    := $(CFLAGS) -isystem $(TOOLCHAIN)/include/c++/v1 -I$(COMMONDIR)
 LDFLAGS     := -m elf_x86_64 -pie --script $(TOOLCHAIN)/link.x --eh-frame-hdr -L$(TOOLCHAIN)/lib $(LIBS) $(TOOLCHAIN)/lib/crt1.o
 
 UNAME_S     := $(shell uname -s)
@@ -49,7 +50,7 @@ $(INTDIR)/%.o: $(PROJDIR)/%.cpp | $(INTDIR)
 
 eboot.bin: $(INTDIR) $(OBJS)
 	$(LD) $(OBJS) -o $(INTDIR)/blackout.elf $(LDFLAGS)
-	$(TOOLCHAIN)/bin/$(CDIR)/create-fself -in=$(INTDIR)/blackout.elf --out=$(INTDIR)/blackout.oelf --eboot "eboot.bin" --paid 0x3800000000000011
+	$(TOOLCHAIN)/bin/$(CDIR)/create-fself -in=$(INTDIR)/blackout.elf --out=eboot.bin --eboot "eboot.bin" --paid 0x3800000000000011
 	test -s eboot.bin
 	file eboot.bin
 
