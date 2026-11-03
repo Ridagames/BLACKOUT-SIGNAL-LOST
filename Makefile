@@ -1,34 +1,31 @@
-# BLACKOUT: SIGNAL LOST — OpenOrbis PS4
+# BLACKOUT: SIGNAL LOST — PS4 / OpenOrbis
+# Build aligned with OpenOrbis official samples/hello_world.
+
 TITLE       := BLACKOUT: SIGNAL LOST
 VERSION     := 1.00
 TITLE_ID    := BLSG00001
 CONTENT_ID  := IV0000-BLSG00001_00-0000000000000001
 
-LIBS        := -lc -lkernel -lc++ -lSceUserService -lSceVideoOut -lScePad
+LIBS        := -lc -lkernel -lc++
 EXTRAFLAGS  := -O2 -Wall
-
-ASSETS      := $(wildcard assets/**/*)
-LIBMODULES  := $(wildcard sce_module/*)
 
 TOOLCHAIN   := $(OO_PS4_TOOLCHAIN)
 PROJDIR     := source
 INTDIR      := $(PROJDIR)/x64/Debug
-COMMONDIR   := $(TOOLCHAIN)/samples/_common
 
 CFILES      := $(wildcard $(PROJDIR)/*.c)
 CPPFILES    := $(wildcard $(PROJDIR)/*.cpp)
-COMMONFILES := $(wildcard $(COMMONDIR)/*.cpp)
-OBJS        := $(patsubst $(PROJDIR)/%.c,$(INTDIR)/%.o,$(CFILES)) $(patsubst $(PROJDIR)/%.cpp,$(INTDIR)/%.o,$(CPPFILES)) $(patsubst $(COMMONDIR)/%.cpp,$(INTDIR)/common-%.o,$(COMMONFILES))
+OBJS        := $(patsubst $(PROJDIR)/%.c,$(INTDIR)/%.o,$(CFILES)) $(patsubst $(PROJDIR)/%.cpp,$(INTDIR)/%.o,$(CPPFILES))
 
 CFLAGS      := --target=x86_64-pc-freebsd12-elf -fPIC -funwind-tables -c $(EXTRAFLAGS) -isysroot $(TOOLCHAIN) -isystem $(TOOLCHAIN)/include
-CXXFLAGS    := $(CFLAGS) -isystem $(TOOLCHAIN)/include/c++/v1 -I$(COMMONDIR)
+CXXFLAGS    := $(CFLAGS) -isystem $(TOOLCHAIN)/include/c++/v1
 LDFLAGS     := -m elf_x86_64 -pie --script $(TOOLCHAIN)/link.x --eh-frame-hdr -L$(TOOLCHAIN)/lib $(LIBS) $(TOOLCHAIN)/lib/crt1.o
 
 UNAME_S     := $(shell uname -s)
 ifeq ($(UNAME_S),Linux)
-CC          ?= clang
-CXX         ?= clang++
-LD          ?= ld.lld
+CC          := clang
+CXX         := clang++
+LD          := ld.lld
 CDIR        := linux
 endif
 ifeq ($(UNAME_S),Darwin)
@@ -44,18 +41,17 @@ all: $(CONTENT_ID).pkg
 $(INTDIR):
 	mkdir -p $(INTDIR)
 
-$(INTDIR)/%.o: $(PROJDIR)/%.cpp | $(INTDIR)
-	$(CXX) $(CXXFLAGS) -I$(COMMONDIR) -o $@ $<
-
-$(INTDIR)/common-%.o: $(COMMONDIR)/%.cpp | $(INTDIR)
-	$(CXX) $(CXXFLAGS) -I$(COMMONDIR) -o $@ $<
-
 $(INTDIR)/%.o: $(PROJDIR)/%.c | $(INTDIR)
 	$(CC) $(CFLAGS) -o $@ $<
 
-eboot.bin: $(OBJS)
-	$(LD) $(INTDIR)/*.o -o $(INTDIR)/blackout.elf $(LDFLAGS)
-	$(TOOLCHAIN)/bin/$(CDIR)/create-fself -in=$(INTDIR)/blackout.elf -out=$(INTDIR)/blackout.oelf --eboot "eboot.bin" --paid 0x3800000000000011
+$(INTDIR)/%.o: $(PROJDIR)/%.cpp | $(INTDIR)
+	$(CXX) $(CXXFLAGS) -o $@ $<
+
+eboot.bin: $(INTDIR) $(OBJS)
+	$(LD) $(OBJS) -o $(INTDIR)/blackout.elf $(LDFLAGS)
+	$(TOOLCHAIN)/bin/$(CDIR)/create-fself -in=$(INTDIR)/blackout.elf --out=$(INTDIR)/blackout.oelf --eboot "eboot.bin" --paid 0x3800000000000011
+	test -s eboot.bin
+	file eboot.bin
 
 sce_sys/param.sfo: Makefile
 	mkdir -p sce_sys
@@ -71,9 +67,8 @@ sce_sys/param.sfo: Makefile
 	$(TOOLCHAIN)/bin/$(CDIR)/PkgTool.Core sfo_setentry $@ TITLE_ID --type Utf8 --maxsize 12 --value '$(TITLE_ID)'
 	$(TOOLCHAIN)/bin/$(CDIR)/PkgTool.Core sfo_setentry $@ VERSION --type Utf8 --maxsize 8 --value '$(VERSION)'
 
-pkg.gp4: pkg.template.gp4 eboot.bin sce_sys/about/right.sprx sce_sys/param.sfo sce_sys/icon0.png assets/USRDIR/BLACKOUT_MENU.png
-	cp pkg.template.gp4 $@
-	sed -i "s|@CONTENT_ID@|$(CONTENT_ID)|g" $@
+pkg.gp4: eboot.bin sce_sys/about/right.sprx sce_sys/param.sfo sce_sys/icon0.png assets/USRDIR/BLACKOUT_MENU.png
+	$(TOOLCHAIN)/bin/$(CDIR)/create-gp4 -out $@ --content-id=$(CONTENT_ID) --files "$^"
 
 $(CONTENT_ID).pkg: pkg.gp4
 	$(TOOLCHAIN)/bin/$(CDIR)/PkgTool.Core pkg_build $< .
