@@ -29,7 +29,9 @@ jobs:
         run: |
           set -eu
           echo "SDK: /lib/OpenOrbisSDK"
-          find /lib/OpenOrbisSDK -type f \\( -name 'create-fself' -o -name 'create-gp4' -o -name 'PkgTool.Core' \\) -print
+          find /lib/OpenOrbisSDK -type f -name create-fself -print
+          find /lib/OpenOrbisSDK -type f -name create-gp4 -print
+          find /lib/OpenOrbisSDK -type f -name PkgTool.Core -print
           echo "Executables dans bin:"
           find /lib/OpenOrbisSDK/bin -maxdepth 3 -type f -print 2>/dev/null | head -80 || true
 
