@@ -113,9 +113,9 @@ static void drawNotice(Scene2D* s,const char* title,const char* body,int frame) 
 int main(void) {
  setvbuf(stdout,nullptr,_IONBF,0);
  DEBUGLOG << "BLACKOUT: SIGNAL LOST - graphical menu boot";
- Scene2D scene(W,H,4);
- if(!scene.Init(0xC000000,2)){DEBUGLOG<<"Video initialization failed";for(;;)sceKernelUsleep(1000000);}
- scene.SetActiveFrameBuffer(0);
+ Scene2D* scene = new Scene2D(W,H,4);
+ if(!scene->Init(0xC000000,2)){DEBUGLOG<<"Video initialization failed";for(;;)sceKernelUsleep(1000000);}
+ scene->SetActiveFrameBuffer(0);
  if(scePadInit()!=0){DEBUGLOG<<"Pad initialization failed";for(;;)sceKernelUsleep(1000000);}
  OrbisUserServiceInitializeParams userParams{};
  userParams.priority=ORBIS_KERNEL_PRIO_FIFO_LOWEST;
@@ -144,15 +144,15 @@ int main(void) {
     }
    } else if(pressed&ORBIS_PAD_BUTTON_CIRCLE) screen=0;
   }
-  if(screen==0)drawMenu(&scene,selected,frame);
-  else if(screen==1)drawNotice(&scene,"NEW GAME","THE FIRST CHAPTER IS UNDER DEVELOPMENT.",frame);
+  if(screen==0)drawMenu(scene,selected,frame);
+  else if(screen==1)drawNotice(scene,"NEW GAME","THE FIRST CHAPTER IS UNDER DEVELOPMENT.",frame);
   else if(screen==2)drawNotice(&scene,"CONTINUE","NO SAVE DATA FOUND.",frame);
   else if(screen==3)drawNotice(&scene,"OPTIONS","GAMEPLAY SETTINGS WILL BE ADDED HERE.",frame);
   else if(screen==4)drawNotice(&scene,"CREDITS","A RIDAGAMES PRODUCTION.",frame);
   else drawNotice(&scene,"QUIT","PRESS CIRCLE TO RETURN.",frame);
-  scene.SubmitFlip(frame);
-  scene.FrameWait(frame);
-  scene.FrameBufferSwap();
+  scene->SubmitFlip(frame);
+  scene->FrameWait(frame);
+  scene->FrameBufferSwap();
   ++frame;
   sceKernelUsleep(16000);
  }
