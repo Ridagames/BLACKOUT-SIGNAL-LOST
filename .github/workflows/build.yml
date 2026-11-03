@@ -13,7 +13,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 60
     container:
-      image: openorbis/openorbis-sdk:latest
+      image: openorbisofficial/toolchain:latest
     steps:
       - uses: actions/checkout@v4
 
@@ -29,8 +29,8 @@ jobs:
       - name: Build
         run: |
           set -eu
-          export OO_PS4_TOOLCHAIN=/opt/openorbis
-          export PATH="$OO_PS4_TOOLCHAIN/bin/linux:$PATH"
+          export OO_PS4_TOOLCHAIN=/lib/OpenOrbisSDK
+          export PATH="$OO_PS4_TOOLCHAIN/bin/linux:$OO_PS4_TOOLCHAIN:$PATH"
           make clean
           make V=1
           test -s eboot.bin
