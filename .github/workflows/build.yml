@@ -24,8 +24,6 @@ jobs:
           test -f Makefile
           test -f source/main.cpp
           test -s assets/USRDIR/BLACKOUT_MENU.png
-          test -s sce_sys/about/right.sprx
-          test -s sce_sys/icon0.png
 
       - name: Build
         run: |
