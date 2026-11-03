@@ -52,7 +52,6 @@ eboot.bin: $(INTDIR) $(OBJS)
 	$(LD) $(OBJS) -o $(INTDIR)/blackout.elf $(LDFLAGS)
 	$(TOOLCHAIN)/bin/$(CDIR)/create-eboot -in=$(INTDIR)/blackout.elf --paid 0x3800000000000011
 	test -s eboot.bin
-	file eboot.bin
 
 sce_sys/param.sfo: Makefile
 	mkdir -p sce_sys
