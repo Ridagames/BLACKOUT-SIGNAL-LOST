@@ -1,12 +1,12 @@
 # BLACKOUT: SIGNAL LOST — PS4 / OpenOrbis
 # Build aligned with OpenOrbis official samples/hello_world.
 
-TITLE       := BLACKOUT: SIGNAL LOST
-VERSION     := 1.00
+TITLE       := BLACKOUT - SIGNAL LOST
+VERSION     := 01.00
 TITLE_ID    := BLSG00001
 CONTENT_ID  := IV0000-BLSG00001_00-0000000000000001
 
-LIBS        := -lc -lkernel -lc++
+LIBS        := -lc -lkernel -lc++ -lSceSysUtil -lScePad
 EXTRAFLAGS  := -O2 -Wall
 
 TOOLCHAIN   := $(OO_PS4_TOOLCHAIN)
@@ -59,19 +59,24 @@ eboot.bin: $(INTDIR) $(OBJS)
 sce_sys/param.sfo: Makefile
 	mkdir -p sce_sys
 	$(TOOLCHAIN)/bin/$(CDIR)/PkgTool.Core sfo_new $@
-	$(TOOLCHAIN)/bin/$(CDIR)/PkgTool.Core sfo_setentry $@ APP_TYPE --type Integer --maxsize 4 --value 1
+	$(TOOLCHAIN)/bin/$(CDIR)/PkgTool.Core sfo_setentry $@ APP_TYPE --type Integer --maxsize 4 --value 0
 	$(TOOLCHAIN)/bin/$(CDIR)/PkgTool.Core sfo_setentry $@ APP_VER --type Utf8 --maxsize 8 --value '$(VERSION)'
 	$(TOOLCHAIN)/bin/$(CDIR)/PkgTool.Core sfo_setentry $@ ATTRIBUTE --type Integer --maxsize 4 --value 0
 	$(TOOLCHAIN)/bin/$(CDIR)/PkgTool.Core sfo_setentry $@ CATEGORY --type Utf8 --maxsize 4 --value 'gd'
 	$(TOOLCHAIN)/bin/$(CDIR)/PkgTool.Core sfo_setentry $@ CONTENT_ID --type Utf8 --maxsize 48 --value '$(CONTENT_ID)'
 	$(TOOLCHAIN)/bin/$(CDIR)/PkgTool.Core sfo_setentry $@ DOWNLOAD_DATA_SIZE --type Integer --maxsize 4 --value 0
-	$(TOOLCHAIN)/bin/$(CDIR)/PkgTool.Core sfo_setentry $@ SYSTEM_VER --type Integer --maxsize 4 --value 0
+	$(TOOLCHAIN)/bin/$(CDIR)/PkgTool.Core sfo_setentry $@ SYSTEM_VER --type Integer --maxsize 4 --value 0x14000000
 	$(TOOLCHAIN)/bin/$(CDIR)/PkgTool.Core sfo_setentry $@ TITLE --type Utf8 --maxsize 128 --value '$(TITLE)'
 	$(TOOLCHAIN)/bin/$(CDIR)/PkgTool.Core sfo_setentry $@ TITLE_ID --type Utf8 --maxsize 12 --value '$(TITLE_ID)'
 	$(TOOLCHAIN)/bin/$(CDIR)/PkgTool.Core sfo_setentry $@ VERSION --type Utf8 --maxsize 8 --value '$(VERSION)'
 
 pkg.gp4: eboot.bin sce_sys/about/right.sprx sce_sys/param.sfo sce_sys/icon0.png assets/USRDIR/BLACKOUT_MENU.png
-	$(TOOLCHAIN)/bin/$(CDIR)/create-gp4 -out $@ --content-id=$(CONTENT_ID) --files "$^"
+	$(TOOLCHAIN)/bin/$(CDIR)/create-gp4 -out $@ --content-id=$(CONTENT_ID) \
+		--files "eboot.bin=eboot.bin" \
+		--files "sce_sys/param.sfo=sce_sys/param.sfo" \
+		--files "sce_sys/icon0.png=sce_sys/icon0.png" \
+		--files "sce_sys/about/right.sprx=sce_sys/about/right.sprx" \
+		--files "assets/USRDIR/BLACKOUT_MENU.png=USRDIR/BLACKOUT_MENU.png"
 
 $(CONTENT_ID).pkg: pkg.gp4
 	$(TOOLCHAIN)/bin/$(CDIR)/PkgTool.Core pkg_build $< .
