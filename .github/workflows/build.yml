@@ -1,9 +1,8 @@
-name: Build BLACKOUT PS4
+name: Build PS4 Homebrew
 
 on:
   push:
-    branches:
-      - "ps4/**"
+    branches: [main, master]
   workflow_dispatch:
 
 permissions:
@@ -11,67 +10,39 @@ permissions:
 
 jobs:
   build:
-    runs-on: ubuntu-22.04
-    timeout-minutes: 45
-
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    container:
+      image: openorbis/openorbis-sdk:latest
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      - name: Install build dependencies
+      - name: Vérif projet
         run: |
-          set -euo pipefail
-          sudo apt-get update
-          sudo apt-get install -y make curl libicu-dev clang lld librsvg2-bin libssl1.1
-
-      - name: Install OpenOrbis Toolchain v0.5.4
-        run: |
-          set -euo pipefail
-          curl -fL --retry 3 \
-            https://github.com/OpenOrbis/OpenOrbis-PS4-Toolchain/releases/download/v0.5.4/toolchain-llvm-18.tar.gz \
-            -o oo-toolchain.tar.gz
-          mkdir -p "$HOME/openorbis"
-          tar -xzf oo-toolchain.tar.gz -C "$HOME/openorbis"
-          OO_ROOT="$(dirname "$(find "$HOME/openorbis" -name link.x -type f -print -quit)")"
-          test -n "$OO_ROOT"
-          test -f "$OO_ROOT/link.x"
-          echo "OO_PS4_TOOLCHAIN=$OO_ROOT" >> "$GITHUB_ENV"
-          echo "OpenOrbis root: $OO_ROOT"
-
-      - name: Prepare package metadata and icon
-        run: |
-          set -euo pipefail
-          mkdir -p sce_sys/about
-          RIGHT="$(find "$OO_PS4_TOOLCHAIN" -name right.sprx -type f -print -quit)"
-          if [ -z "$RIGHT" ]; then
-            echo "right.sprx absent from toolchain"
-            find "$OO_PS4_TOOLCHAIN" -iname '*right*' -type f | head -30
-            exit 1
-          fi
-          cp "$RIGHT" sce_sys/about/right.sprx
-          rsvg-convert -w 512 -h 512 assets/blackout-icon.svg -o sce_sys/icon0.png
+          set -eu
+          test -f Makefile
+          test -f source/main.cpp
+          test -s assets/USRDIR/BLACKOUT_MENU.png
+          test -s sce_sys/about/right.sprx
           test -s sce_sys/icon0.png
 
-      - name: Build PS4 PKG
+      - name: Build
         run: |
-          set -euo pipefail
-          CLANG="$(find "$OO_PS4_TOOLCHAIN" -type f -name clang -print -quit)"
-          CLANGXX="$(find "$OO_PS4_TOOLCHAIN" -type f -name clang++ -print -quit)"
-          LLD="$(find "$OO_PS4_TOOLCHAIN" -type f -name ld.lld -print -quit)"
+          set -eu
+          export OO_PS4_TOOLCHAIN=/opt/openorbis
+          export PATH="$OO_PS4_TOOLCHAIN/bin/linux:$PATH"
           make clean
-          make CC="${CLANG:-clang}" CXX="${CLANGXX:-clang++}" LD="${LLD:-ld.lld}" V=1
+          make V=1
           test -s eboot.bin
-          test -s IV0000-BLSG00001_00-0000000000000001.pkg
           file eboot.bin
-          ls -lh eboot.bin IV0000-BLSG00001_00-0000000000000001.pkg
+          test -s IV0000-BLSG00001_00-0000000000000001.pkg
+          ls -lh IV0000-BLSG00001_00-0000000000000001.pkg
           sha256sum eboot.bin IV0000-BLSG00001_00-0000000000000001.pkg
 
-      - name: Upload PS4 build artifacts
-        uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v4
         with:
-          name: BLACKOUT-SIGNAL-LOST-PS4
+          name: blackout-pkg
           path: |
-            IV0000-BLSG00001_00-0000000000000001.pkg
             eboot.bin
-          if-no-files-found: error
-          retention-days: 30
+            IV0000-BLSG00001_00-0000000000000001.pkg
+          retention-days: 14
