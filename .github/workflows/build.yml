@@ -1,11 +1,9 @@
-name: Build PS3 Homebrew
+name: Build BLACKOUT PS4
 
 on:
   push:
     branches:
-      - main
-      - master
-      - 'diagnostic/**'
+      - "ps4/**"
   workflow_dispatch:
 
 permissions:
@@ -14,130 +12,65 @@ permissions:
 jobs:
   build:
     runs-on: ubuntu-latest
-    timeout-minutes: 60
+    timeout-minutes: 45
 
     steps:
-      - name: Checkout repository
+      - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Check project files
+      - name: Install build dependencies
         run: |
-          set -eu
-          test -f Makefile
-          test -f source/main.cpp
-          test -s assets/USRDIR/BLACKOUT_MENU.png
+          sudo apt-get update
+          sudo apt-get install -y make curl libicu-dev clang lld imagemagick
 
-      - name: Build and inspect PS3 files
+      - name: Install OpenOrbis Toolchain v0.5.4
         run: |
-          set -eu
+          set -euo pipefail
+          curl -fL --retry 3 \
+            https://github.com/OpenOrbis/OpenOrbis-PS4-Toolchain/releases/download/v0.5.4/toolchain-llvm-18.tar.gz \
+            -o oo-toolchain.tar.gz
+          mkdir -p "$HOME/openorbis"
+          tar -xzf oo-toolchain.tar.gz -C "$HOME/openorbis"
+          OO_ROOT="$(dirname "$(find "$HOME/openorbis" -name link.x -type f -print -quit)")"
+          test -n "$OO_ROOT"
+          test -f "$OO_ROOT/link.x"
+          echo "OO_PS4_TOOLCHAIN=$OO_ROOT" >> "$GITHUB_ENV"
+          echo "OpenOrbis root: $OO_ROOT"
 
-          docker run --rm \
-            -v "$PWD:/workspace" \
-            -w /workspace \
-            hldtux/ps3dev:latest \
-            bash -lc '
-              set -eu
-
-              export PS3DEV=/usr/local/ps3dev
-              export PSL1GHT="$PS3DEV"
-              export PATH="$PS3DEV/bin:$PS3DEV/ppu/bin:$PS3DEV/spu/bin:$PATH"
-
-              echo "=== INSTALLATION DE Tiny3D ==="
-              git clone https://github.com/wargio/tiny3D.git /tmp/tiny3D
-              git -C /tmp/tiny3D checkout 9b02ae6e9f21ff15185f8a3846bdca5304d7e0ae
-              test -f /tmp/tiny3D/libfont/Makefile
-              make -C /tmp/tiny3D/lib install
-              make -C /tmp/tiny3D/libfont install
-
-              echo "=== ENVIRONNEMENT ==="
-              echo "PS3DEV=$PS3DEV"
-              echo "PSL1GHT=$PSL1GHT"
-
-              echo "=== COMPILATEUR PPU ==="
-              command -v ppu-g++
-              ppu-g++ --version
-
-              echo "=== NETTOYAGE ==="
-              make clean
-
-              echo "=== COMPILATION ==="
-              make V=1
-
-              echo "=== VERIFICATION ELF ==="
-              test -s blackout.elf
-              ls -lh blackout.elf
-              file blackout.elf
-              ppu-readelf -h blackout.elf
-              ppu-readelf -h blackout.elf | grep -q "Class:.*ELF64"
-              ppu-readelf -h blackout.elf | grep -q "Data:.*big endian"
-              ppu-readelf -h blackout.elf | grep -q "Type:.*EXEC"
-              ppu-readelf -h blackout.elf | grep -q "Machine:.*PowerPC64"
-              ppu-readelf -h blackout.elf | grep -q "Entry point address:.*0x"
-
-              echo "=== SYMBOLES ET DEPENDANCES ==="
-              command -v ppu-nm
-              ppu-nm -u blackout.elf || true
-
-              echo "=== GENERATION DU PKG PSL1GHT ==="
-              make blackout.pkg
-
-              echo "=== VERIFICATION DES DEUX PKG ==="
-              test -s blackout.pkg
-              test -s blackout.gnpdrm.pkg
-              ls -lh blackout.pkg blackout.gnpdrm.pkg
-              file blackout.pkg blackout.gnpdrm.pkg
-              sha256sum blackout.pkg blackout.gnpdrm.pkg
-
-              echo "=== VERIFICATION DU PKG FINALISE ==="
-              test "$(stat -c %s blackout.gnpdrm.pkg)" -gt 100000
-              test "$(stat -c %s blackout.gnpdrm.pkg)" -lt 200000000
-              if cmp -s blackout.pkg blackout.gnpdrm.pkg; then
-                echo "ERREUR: package_finalize na pas modifie le PKG"
-                exit 1
-              fi
-
-              echo "=== PUBLICATION DU PKG FINALISE SOUS blackout.pkg ==="
-              cp blackout.gnpdrm.pkg blackout.pkg
-              test -s blackout.pkg
-              cmp -s blackout.pkg blackout.gnpdrm.pkg
-              bash tools/verify_pkg.sh blackout.pkg blackout.gnpdrm.pkg
-
-              echo "=== VERIFICATION EBOOT NPDRM ==="
-              test -s build/pkg/USRDIR/EBOOT.BIN
-              file build/pkg/USRDIR/EBOOT.BIN
-              ls -lh build/pkg/USRDIR/EBOOT.BIN
-              command -v make_self_npdrm
-              command -v package_finalize
-              sha256sum build/pkg/USRDIR/EBOOT.BIN
-
-              echo "=== VERIFICATION PARAM.SFO ==="
-              test -s build/pkg/PARAM.SFO
-              file build/pkg/PARAM.SFO
-              ls -lh build/pkg/PARAM.SFO
-
-              echo "=== EMPREINTES FINALES ==="
-              sha256sum blackout.elf build/blackout.elf build/pkg/USRDIR/EBOOT.BIN blackout.pkg blackout.gnpdrm.pkg
-
-              echo "=== BUILD TERMINE ==="
-            '
-
-      - name: Prepare clearly named HEN package
+      - name: Prepare package metadata and icon
         run: |
-          set -eu
-          test -s blackout.gnpdrm.pkg
-          cp blackout.gnpdrm.pkg BLACKOUT-SIGNAL-LOST-HEN.pkg
-          test -s BLACKOUT-SIGNAL-LOST-HEN.pkg
-          sha256sum BLACKOUT-SIGNAL-LOST-HEN.pkg
+          set -euo pipefail
+          mkdir -p sce_sys/about
+          RIGHT="$(find "$OO_PS4_TOOLCHAIN" -name right.sprx -type f -print -quit)"
+          if [ -z "$RIGHT" ]; then
+            echo "right.sprx absent from toolchain"
+            exit 1
+          fi
+          cp "$RIGHT" sce_sys/about/right.sprx
+          convert -background "#080b12" assets/blackout-icon.svg -resize 512x512 sce_sys/icon0.png
+          test -s sce_sys/icon0.png
 
-      - name: Upload build files
+      - name: Build PS4 PKG
+        run: |
+          set -euo pipefail
+          CLANG="$(find "$OO_PS4_TOOLCHAIN" -type f -name clang -print -quit)"
+          CLANGXX="$(find "$OO_PS4_TOOLCHAIN" -type f -name clang++ -print -quit)"
+          LLD="$(find "$OO_PS4_TOOLCHAIN" -type f -name ld.lld -print -quit)"
+          make clean
+          make CC="${CLANG:-clang}" CXX="${CLANGXX:-clang++}" LD="${LLD:-ld.lld}" V=1
+          test -s eboot.bin
+          test -s IV0000-BLSG00001_00-0000000000000001.pkg
+          file eboot.bin
+          ls -lh eboot.bin IV0000-BLSG00001_00-0000000000000001.pkg
+          sha256sum eboot.bin IV0000-BLSG00001_00-0000000000000001.pkg
+
+      - name: Upload PS4 build artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: blackout-ps3-hen-build
+          name: BLACKOUT-SIGNAL-LOST-PS4
           path: |
-            BLACKOUT-SIGNAL-LOST-HEN.pkg
-            blackout.gnpdrm.pkg
-            blackout.pkg
-            blackout.elf
-            blackout.self
-          if-no-files-found: warn
-          retention-days: 14
+            IV0000-BLSG00001_00-0000000000000001.pkg
+            eboot.bin
+            source/x64/Debug/*.elf
+          if-no-files-found: error
+          retention-days: 30
