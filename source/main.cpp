@@ -1,33 +1,18 @@
+#include <cstdio>
+#include <sstream>
+#include <orbis/libkernel.h>
+#include "log.h"
 
-#include <stdlib.h>
-#include <sysutil/sysutil.h>
-#include <io/pad.h>
+std::stringstream debugLogStream;
 
-static bool running = true;
-
-static void sysCallback(u64 status, u64 param, void *userdata)
+int main(void)
 {
-    (void)param;
-    (void)userdata;
-
-    if (status == SYSUTIL_EXIT_GAME)
-    {
-        running = false;
+    setvbuf(stdout, nullptr, _IONBF, 0);
+    DEBUGLOG << "BLACKOUT PS4 BOOT DIAGNOSTIC: executable started";
+    sceKernelUsleep(2 * 1000000);
+    DEBUGLOG << "BLACKOUT PS4 BOOT DIAGNOSTIC: entering idle loop";
+    for (;;) {
+        sceKernelUsleep(1000000);
     }
-}
-
-int main()
-{
-    sysUtilRegisterCallback(0, sysCallback, NULL);
-
-    ioPadInit(7);
-
-    while (running)
-    {
-        sysUtilCheckCallback();
-    }
-
-    ioPadEnd();
-
     return 0;
 }
