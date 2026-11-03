@@ -25,6 +25,14 @@ jobs:
           test -f source/main.cpp
           test -s assets/USRDIR/BLACKOUT_MENU.png
 
+      - name: Inspecter les outils OpenOrbis
+        run: |
+          set -eu
+          echo "SDK: /lib/OpenOrbisSDK"
+          find /lib/OpenOrbisSDK -type f \\( -name 'create-fself' -o -name 'create-gp4' -o -name 'PkgTool.Core' \\) -print
+          echo "Executables dans bin:"
+          find /lib/OpenOrbisSDK/bin -maxdepth 3 -type f -print 2>/dev/null | head -80 || true
+
       - name: Build
         run: |
           set -eu
