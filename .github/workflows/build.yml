@@ -22,7 +22,7 @@ jobs:
         run: |
           set -euo pipefail
           sudo apt-get update
-          sudo apt-get install -y make curl libicu-dev clang lld imagemagick libssl1.1
+          sudo apt-get install -y make curl libicu-dev clang lld librsvg2-bin libssl1.1
 
       - name: Install OpenOrbis Toolchain v0.5.4
         run: |
@@ -49,7 +49,7 @@ jobs:
             exit 1
           fi
           cp "$RIGHT" sce_sys/about/right.sprx
-          convert -background "#080b12" assets/blackout-icon.svg -resize 512x512 sce_sys/icon0.png
+          rsvg-convert -w 512 -h 512 assets/blackout-icon.svg -o sce_sys/icon0.png
           test -s sce_sys/icon0.png
 
       - name: Build PS4 PKG
