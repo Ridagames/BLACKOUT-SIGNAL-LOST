@@ -4,7 +4,7 @@ VERSION     := 1.00
 TITLE_ID    := BLSG00001
 CONTENT_ID  := IV0000-BLSG00001_00-0000000000000001
 
-LIBS        := -lc -lkernel -lc++
+LIBS        := -lc -lkernel -lc++ -lSceUserService -lSceVideoOut -lScePad
 EXTRAFLAGS  := -O2 -Wall
 
 ASSETS      := $(wildcard assets/**/*)
@@ -17,7 +17,8 @@ COMMONDIR   := $(TOOLCHAIN)/samples/_common
 
 CFILES      := $(wildcard $(PROJDIR)/*.c)
 CPPFILES    := $(wildcard $(PROJDIR)/*.cpp)
-OBJS        := $(patsubst $(PROJDIR)/%.c,$(INTDIR)/%.o,$(CFILES)) $(patsubst $(PROJDIR)/%.cpp,$(INTDIR)/%.o,$(CPPFILES))
+COMMONFILES := $(wildcard $(COMMONDIR)/*.cpp)
+OBJS        := $(patsubst $(PROJDIR)/%.c,$(INTDIR)/%.o,$(CFILES)) $(patsubst $(PROJDIR)/%.cpp,$(INTDIR)/%.o,$(CPPFILES)) $(patsubst $(COMMONDIR)/%.cpp,$(INTDIR)/common-%.o,$(COMMONFILES))
 
 CFLAGS      := --target=x86_64-pc-freebsd12-elf -fPIC -funwind-tables -c $(EXTRAFLAGS) -isysroot $(TOOLCHAIN) -isystem $(TOOLCHAIN)/include
 CXXFLAGS    := $(CFLAGS) -isystem $(TOOLCHAIN)/include/c++/v1 -I$(COMMONDIR)
@@ -44,7 +45,10 @@ $(INTDIR):
 	mkdir -p $(INTDIR)
 
 $(INTDIR)/%.o: $(PROJDIR)/%.cpp | $(INTDIR)
-	$(CXX) $(CXXFLAGS) -o $@ $<
+	$(CXX) $(CXXFLAGS) -I$(COMMONDIR) -o $@ $<
+
+$(INTDIR)/common-%.o: $(COMMONDIR)/%.cpp | $(INTDIR)
+	$(CXX) $(CXXFLAGS) -I$(COMMONDIR) -o $@ $<
 
 $(INTDIR)/%.o: $(PROJDIR)/%.c | $(INTDIR)
 	$(CC) $(CFLAGS) -o $@ $<
