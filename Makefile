@@ -68,10 +68,11 @@ sce_sys/param.sfo: Makefile
 	$(PKGTOOL) sfo_setentry $@ VERSION --type Utf8 --maxsize 8 --value '$(VERSION)'
 
 pkg.gp4: eboot.bin sce_sys/param.sfo assets/USRDIR/BLACKOUT_MENU.png tools/create_gp4.py
-	python3 tools/create_gp4.py --content-id '$(CONTENT_ID)' --title-id '$(TITLE_ID)' --stage '$(STAGE)' --eboot eboot.bin --sfo sce_sys/param.sfo --asset assets/USRDIR/BLACKOUT_MENU.png --output $@
+	python3 tools/create_gp4.py --content-id '$(CONTENT_ID)' --title-id '$(TITLE_ID)' --stage '$(STAGE)' --eboot eboot.bin --sfo sce_sys/param.sfo --asset assets/USRDIR/BLACKOUT_MENU.png --output $(STAGE)/pkg.gp4
 
 $(CONTENT_ID).pkg: pkg.gp4
-	cd $(STAGE) && $(PKGTOOL) pkg_build ../../pkg.gp4 .
+	cd $(STAGE) && $(PKGTOOL) pkg_build pkg.gp4 .
+	cp $(STAGE)/$(CONTENT_ID).pkg $@
 
 clean:
 	rm -rf $(INTDIR) $(STAGE) build eboot.bin pkg.gp4 $(CONTENT_ID).pkg sce_sys/param.sfo
