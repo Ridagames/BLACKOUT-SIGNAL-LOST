@@ -11,7 +11,7 @@ permissions:
 
 jobs:
   build:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
     timeout-minutes: 45
 
     steps:
@@ -20,13 +20,9 @@ jobs:
 
       - name: Install build dependencies
         run: |
+          set -euo pipefail
           sudo apt-get update
-          sudo apt-get install -y make curl libicu-dev clang lld imagemagick
-          base="http://security.ubuntu.com/ubuntu/pool/main/o/openssl/"
-          ver="$(curl -fsSL "$base" | grep -oE 'libssl1\\.1_1\\.1\\.1f-[0-9a-z.~+]+_amd64\\.deb' | sed -E 's/^libssl1\\.1_(.*)_amd64\\.deb$/\\1/' | sort -V | tail -1)"
-          test -n "$ver"
-          curl -fsSL "${base}libssl1.1_${ver}_amd64.deb" -o libssl1.1.deb
-          sudo dpkg -i libssl1.1.deb || sudo apt-get install -f -y
+          sudo apt-get install -y make curl libicu-dev clang lld imagemagick libssl1.1
 
       - name: Install OpenOrbis Toolchain v0.5.4
         run: |
@@ -49,6 +45,7 @@ jobs:
           RIGHT="$(find "$OO_PS4_TOOLCHAIN" -name right.sprx -type f -print -quit)"
           if [ -z "$RIGHT" ]; then
             echo "right.sprx absent from toolchain"
+            find "$OO_PS4_TOOLCHAIN" -iname '*right*' -type f | head -30
             exit 1
           fi
           cp "$RIGHT" sce_sys/about/right.sprx
@@ -76,6 +73,5 @@ jobs:
           path: |
             IV0000-BLSG00001_00-0000000000000001.pkg
             eboot.bin
-            source/x64/Debug/*.elf
           if-no-files-found: error
           retention-days: 30
