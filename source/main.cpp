@@ -146,10 +146,10 @@ int main(void) {
   }
   if(screen==0)drawMenu(scene,selected,frame);
   else if(screen==1)drawNotice(scene,"NEW GAME","THE FIRST CHAPTER IS UNDER DEVELOPMENT.",frame);
-  else if(screen==2)drawNotice(&scene,"CONTINUE","NO SAVE DATA FOUND.",frame);
-  else if(screen==3)drawNotice(&scene,"OPTIONS","GAMEPLAY SETTINGS WILL BE ADDED HERE.",frame);
-  else if(screen==4)drawNotice(&scene,"CREDITS","A RIDAGAMES PRODUCTION.",frame);
-  else drawNotice(&scene,"QUIT","PRESS CIRCLE TO RETURN.",frame);
+  else if(screen==2)drawNotice(scene,"CONTINUE","NO SAVE DATA FOUND.",frame);
+  else if(screen==3)drawNotice(scene,"OPTIONS","GAMEPLAY SETTINGS WILL BE ADDED HERE.",frame);
+  else if(screen==4)drawNotice(scene,"CREDITS","A RIDAGAMES PRODUCTION.",frame);
+  else drawNotice(scene,"QUIT","PRESS CIRCLE TO RETURN.",frame);
   scene->SubmitFlip(frame);
   scene->FrameWait(frame);
   scene->FrameBufferSwap();
