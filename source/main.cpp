@@ -1,6 +1,7 @@
 #include <cstdio>
+#include <sstream>
 #include <orbis/libkernel.h>
-#include "../../samples/_common/log.h"
+#include "log.h"
 
 std::stringstream debugLogStream;
 
