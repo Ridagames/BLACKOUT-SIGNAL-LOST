@@ -1,76 +1,85 @@
-.SUFFIXES:
+# BLACKOUT: SIGNAL LOST — PS4 / OpenOrbis
+# Build aligned with OpenOrbis official samples/hello_world.
 
-ifeq ($(strip $(PSL1GHT)),)
-$(error "PSL1GHT is not set")
+TITLE       := BLACKOUT - SIGNAL LOST
+VERSION     := 01.00
+TITLE_ID    := BLSG00001
+CONTENT_ID  := IV0000-BLSG00001_00-0000000000000001
+
+LIBS        := -lc -lkernel -lc++ -lSceSysUtil -lScePad
+EXTRAFLAGS  := -O2 -Wall
+
+TOOLCHAIN   := $(OO_PS4_TOOLCHAIN)
+PROJDIR     := source
+INTDIR      := $(PROJDIR)/x64/Debug
+
+CFILES      := $(wildcard $(PROJDIR)/*.c)
+CPPFILES    := $(wildcard $(PROJDIR)/*.cpp)
+OBJS        := $(patsubst $(PROJDIR)/%.c,$(INTDIR)/%.o,$(CFILES)) $(patsubst $(PROJDIR)/%.cpp,$(INTDIR)/%.o,$(CPPFILES))
+
+CFLAGS      := --target=x86_64-pc-freebsd12-elf -fPIC -funwind-tables -c $(EXTRAFLAGS) -isysroot $(TOOLCHAIN) -isystem $(TOOLCHAIN)/include
+COMMONDIR   := $(TOOLCHAIN)/samples/_common
+CXXFLAGS    := $(CFLAGS) -isystem $(TOOLCHAIN)/include/c++/v1 -I$(COMMONDIR)
+LDFLAGS     := -m elf_x86_64 -pie --script $(TOOLCHAIN)/link.x --eh-frame-hdr -L$(TOOLCHAIN)/lib $(LIBS) $(TOOLCHAIN)/lib/crt1.o
+
+UNAME_S     := $(shell uname -s)
+ifeq ($(UNAME_S),Linux)
+CC          := clang
+CXX         := clang++
+LD          := ld.lld
+CDIR        := linux
 endif
-
-include $(PSL1GHT)/ppu_rules
-
-TARGET := blackout
-BUILD := build
-SOURCES := source
-
-TITLE := BLACKOUT: SIGNAL LOST
-APPID := BLSG00001
-CONTENTID := UP0001-BLSG00001_00-0000000000000000
-
-PKGFILES := $(CURDIR)/assets
-
-INCLUDES := $(PS3DEV)/ppu/include $(PS3DEV)/portlibs/ppu/include $(PS3DEV)/portlibs/ppu/include
-
-CFLAGS := -O2 -Wall -mcpu=cell $(MACHDEP)
-CXXFLAGS := $(CFLAGS) $(foreach dir,$(INCLUDES),-I$(dir))
-
-LDFLAGS := $(MACHDEP) -Wl,-Map,$(notdir $@).map
-
-LIBS := -ltiny3d -lrsx -lgcm_sys -lio -lsysutil -lrt -llv2 -lsysmodule -lm
-
-LIBDIRS := $(PORTLIBS)
-
-ifeq ($(BUILD),$(notdir $(CURDIR)))
-
-DEPENDS := $(OFILES:.o=.d)
-
-$(OUTPUT).elf: $(OFILES)
-
-$(OUTPUT).self: $(OUTPUT).elf
-
--include $(DEPENDS)
-
-else
-
-export OUTPUT := $(CURDIR)/$(TARGET)
-export VPATH := $(foreach dir,$(SOURCES),$(CURDIR)/$(dir))
-export DEPSDIR := $(CURDIR)/$(BUILD)
-export BUILDDIR := $(CURDIR)/$(BUILD)
-
-CFILES := $(notdir $(wildcard $(SOURCES)/*.c))
-CPPFILES := $(notdir $(wildcard $(SOURCES)/*.cpp))
-
-ifeq ($(strip $(CPPFILES)),)
-export LD := $(CC)
-else
-export LD := $(CXX)
+ifeq ($(UNAME_S),Darwin)
+CC          := /usr/local/opt/llvm/bin/clang
+CXX         := /usr/local/opt/llvm/bin/clang++
+LD          := /usr/local/opt/llvm/bin/ld.lld
+CDIR        := macos
 endif
-
-export OFILES := $(CPPFILES:.cpp=.o) $(CFILES:.c=.o)
-
-export INCLUDE := $(foreach dir,$(INCLUDES),-I$(dir)) \
-                  $(foreach dir,$(LIBDIRS),-I$(dir)/include) \
-                  $(LIBPSL1GHT_INC) \
-                  -I$(CURDIR)/$(BUILD)
-
-export LIBPATHS := $(foreach dir,$(LIBDIRS),-L$(dir)/lib) \
-                   $(LIBPSL1GHT_LIB)
 
 .PHONY: all clean
+all: $(CONTENT_ID).pkg
 
-all: $(BUILD)
+$(INTDIR):
+	mkdir -p $(INTDIR)
 
-$(BUILD):
-	@mkdir -p $@
-	@$(MAKE) --no-print-directory -C $(BUILD) -f $(CURDIR)/Makefile
+$(INTDIR)/%.o: $(PROJDIR)/%.c | $(INTDIR)
+	$(CC) $(CFLAGS) -o $@ $<
+
+$(INTDIR)/%.o: $(PROJDIR)/%.cpp | $(INTDIR)
+	$(CXX) $(CXXFLAGS) -o $@ $<
+
+eboot.bin: $(INTDIR) $(OBJS)
+	$(LD) $(OBJS) -o $(INTDIR)/blackout.elf $(LDFLAGS)
+	$(TOOLCHAIN)/bin/$(CDIR)/create-fself -in=$(INTDIR)/blackout.elf -out=$(INTDIR)/blackout.oelf --eboot "eboot.bin" --paid 0x3800000000000011
+	cp $(INTDIR)/blackout.oelf eboot.bin
+	test -s $(INTDIR)/blackout.oelf
+	test -s eboot.bin
+	file eboot.bin
+
+sce_sys/param.sfo: Makefile
+	mkdir -p sce_sys
+	$(TOOLCHAIN)/bin/$(CDIR)/PkgTool.Core sfo_new $@
+	$(TOOLCHAIN)/bin/$(CDIR)/PkgTool.Core sfo_setentry $@ APP_TYPE --type Integer --maxsize 4 --value 0
+	$(TOOLCHAIN)/bin/$(CDIR)/PkgTool.Core sfo_setentry $@ APP_VER --type Utf8 --maxsize 8 --value '$(VERSION)'
+	$(TOOLCHAIN)/bin/$(CDIR)/PkgTool.Core sfo_setentry $@ ATTRIBUTE --type Integer --maxsize 4 --value 0
+	$(TOOLCHAIN)/bin/$(CDIR)/PkgTool.Core sfo_setentry $@ CATEGORY --type Utf8 --maxsize 4 --value 'gd'
+	$(TOOLCHAIN)/bin/$(CDIR)/PkgTool.Core sfo_setentry $@ CONTENT_ID --type Utf8 --maxsize 48 --value '$(CONTENT_ID)'
+	$(TOOLCHAIN)/bin/$(CDIR)/PkgTool.Core sfo_setentry $@ DOWNLOAD_DATA_SIZE --type Integer --maxsize 4 --value 0
+	$(TOOLCHAIN)/bin/$(CDIR)/PkgTool.Core sfo_setentry $@ SYSTEM_VER --type Integer --maxsize 4 --value 0x14000000
+	$(TOOLCHAIN)/bin/$(CDIR)/PkgTool.Core sfo_setentry $@ TITLE --type Utf8 --maxsize 128 --value '$(TITLE)'
+	$(TOOLCHAIN)/bin/$(CDIR)/PkgTool.Core sfo_setentry $@ TITLE_ID --type Utf8 --maxsize 12 --value '$(TITLE_ID)'
+	$(TOOLCHAIN)/bin/$(CDIR)/PkgTool.Core sfo_setentry $@ VERSION --type Utf8 --maxsize 8 --value '$(VERSION)'
+
+pkg.gp4: eboot.bin sce_sys/about/right.sprx sce_sys/param.sfo sce_sys/icon0.png assets/USRDIR/BLACKOUT_MENU.png
+	$(TOOLCHAIN)/bin/$(CDIR)/create-gp4 -out $@ --content-id=$(CONTENT_ID) \
+		--files "eboot.bin=eboot.bin" \
+		--files "sce_sys/param.sfo=sce_sys/param.sfo" \
+		--files "sce_sys/icon0.png=sce_sys/icon0.png" \
+		--files "sce_sys/about/right.sprx=sce_sys/about/right.sprx" \
+		--files "assets/USRDIR/BLACKOUT_MENU.png=USRDIR/BLACKOUT_MENU.png"
+
+$(CONTENT_ID).pkg: pkg.gp4
+	$(TOOLCHAIN)/bin/$(CDIR)/PkgTool.Core pkg_build $< .
 
 clean:
-	@rm -rf $(BUILD) *.elf *.self *.pkg *.map
-endif
+	rm -rf $(INTDIR) eboot.bin pkg.gp4 $(CONTENT_ID).pkg sce_sys/param.sfo
