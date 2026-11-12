@@ -130,7 +130,7 @@ int main()
             if (pressed & ORBIS_PAD_BUTTON_CROSS) {
                 if (selected == 0) screen = 1;
                 else if (selected == 2) screen = 2;
-                else if (selected == 3) sceKernelExitGame();
+                else if (selected == 3) sceKernelExitProcess(0);
             }
         } else if (pressed & ORBIS_PAD_BUTTON_CIRCLE) {
             screen = 0;
