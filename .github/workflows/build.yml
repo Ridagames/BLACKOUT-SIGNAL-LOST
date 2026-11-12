@@ -24,7 +24,7 @@ jobs:
           test -f Makefile
           test -s source/main.cpp
           test -s assets/USRDIR/BLACKOUT_MENU.png
-          grep -q "sceVideoOut" Makefile
+          grep -qi "SceVideoOut" Makefile
           grep -q "scePadReadState" source/main.cpp
           ! grep -q "diagnostic build started" source/main.cpp
 
