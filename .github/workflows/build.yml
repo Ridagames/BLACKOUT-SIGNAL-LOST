@@ -33,7 +33,9 @@ jobs:
           set -eu
           test -x /lib/OpenOrbisSDK/bin/linux/create-eboot
           test -x /lib/OpenOrbisSDK/bin/linux/PkgTool.Core
-          test -d /lib/OpenOrbisSDK/samples/_common
+          test -s source/common/graphics.cpp
+          test -s source/common/png.cpp
+          test -f /lib/OpenOrbisSDK/include/stb/stb_image.h
 
       - name: Compiler et créer le PKG
         run: |
