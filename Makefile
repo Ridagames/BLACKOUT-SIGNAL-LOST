@@ -8,7 +8,7 @@ TOOLCHAIN := $(OO_PS4_TOOLCHAIN)
 PROJDIR := source
 INTDIR := $(PROJDIR)/x64/Debug
 STAGE := build/pkg
-COMMONDIR := $(TOOLCHAIN)/samples/_common
+COMMONDIR := source/common
 
 LIBS := -lc -lkernel -lc++ -lSceSysUtil -lSceVideoOut -lScePad -lSceUserService
 EXTRAFLAGS := -O2 -Wall
