@@ -2,7 +2,7 @@ name: Build PS4 Homebrew
 
 on:
   push:
-    branches: [main, master, "ps4/**", "diagnostic/**"]
+    branches: [main, master, "ps4/**", "diagnostic/**", "rebuild/**"]
   workflow_dispatch:
 
 permissions:
@@ -18,24 +18,24 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Vérif projet
+      - name: Vérifier les sources et le menu
         run: |
           set -eu
           test -f Makefile
-          test -f source/main.cpp
+          test -s source/main.cpp
           test -s assets/USRDIR/BLACKOUT_MENU.png
+          grep -q "sceVideoOut" Makefile
+          grep -q "scePadReadState" source/main.cpp
+          ! grep -q "diagnostic build started" source/main.cpp
 
-      - name: Inspecter les outils OpenOrbis
+      - name: Vérifier les outils OpenOrbis
         run: |
           set -eu
-          echo "SDK: /lib/OpenOrbisSDK"
-          find /lib/OpenOrbisSDK -type f -name create-fself -print
-          find /lib/OpenOrbisSDK -type f -name create-gp4 -print
-          find /lib/OpenOrbisSDK -type f -name PkgTool.Core -print
-          echo "Executables dans bin:"
-          find /lib/OpenOrbisSDK/bin -maxdepth 3 -type f -print 2>/dev/null | head -80 || true
+          test -x /lib/OpenOrbisSDK/bin/linux/create-eboot
+          test -x /lib/OpenOrbisSDK/bin/linux/PkgTool.Core
+          test -d /lib/OpenOrbisSDK/samples/_common
 
-      - name: Build
+      - name: Compiler et créer le PKG
         run: |
           set -eu
           export OO_PS4_TOOLCHAIN=/lib/OpenOrbisSDK
@@ -44,12 +44,12 @@ jobs:
           make V=1
           test -s eboot.bin
           test -s IV0000-BLSG00001_00-0000000000000001.pkg
-          ls -lh IV0000-BLSG00001_00-0000000000000001.pkg
+          ls -lh eboot.bin IV0000-BLSG00001_00-0000000000000001.pkg
           sha256sum eboot.bin IV0000-BLSG00001_00-0000000000000001.pkg
 
       - uses: actions/upload-artifact@v4
         with:
-          name: blackout-pkg
+          name: blackout-goldhen-menu
           path: |
             eboot.bin
             IV0000-BLSG00001_00-0000000000000001.pkg
