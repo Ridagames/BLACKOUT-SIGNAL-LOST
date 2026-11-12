@@ -117,8 +117,9 @@ int main()
     int selected = 0;
     int screen = 0;
     int frame = 0;
+    bool running = true;
 
-    for (;;) {
+    while (running) {
         scePadReadState(pad, &padData);
         const uint32_t buttons = padData.buttons;
         const uint32_t pressed = buttons & ~previousButtons;
@@ -130,7 +131,7 @@ int main()
             if (pressed & ORBIS_PAD_BUTTON_CROSS) {
                 if (selected == 0) screen = 1;
                 else if (selected == 2) screen = 2;
-                else if (selected == 3) sceKernelExitProcess(0);
+                else if (selected == 3) running = false;
             }
         } else if (pressed & ORBIS_PAD_BUTTON_CIRCLE) {
             screen = 0;
