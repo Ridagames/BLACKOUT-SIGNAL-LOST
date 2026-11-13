@@ -137,7 +137,6 @@ cube("Atmospheric haze volume", (0,8,1.6), (7.5,18,3.0), fogmat)
 # Dark cinematic grade and restrained film grain-like roughness via compositor.
 scene = bpy.context.scene
 scene.render.engine = "BLENDER_EEVEE_NEXT" if bpy.app.version >= (4,2,0) else "BLENDER_EEVEE"
-scene.eevee.taa_render_samples = 48 if hasattr(scene, "eevee") else 0
 scene.render.resolution_x = 1920
 scene.render.resolution_y = 1080
 scene.render.resolution_percentage = 100
