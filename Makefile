@@ -9,16 +9,17 @@ CREATE_FSELF ?= create-fself
 PROJDIR := source
 INTDIR := $(PROJDIR)/x64/Debug
 STAGE := build/pkg
+SDK_SAMPLE := $(TOOLCHAIN)/samples/hello_world
 DIAGNOSTIC_BUILD := 1
 
-LIBS := -lc -lkernel
+# Match the official OpenOrbis hello_world sample runtime libraries.
+LIBS := -lc -lkernel -lc++
 EXTRAFLAGS := -O2 -Wall
 CFILES := $(wildcard $(PROJDIR)/*.c)
 CPPFILES := $(wildcard $(PROJDIR)/*.cpp)
 COMMONFILES :=
 OBJS := $(patsubst $(PROJDIR)/%.c,$(INTDIR)/%.o,$(CFILES)) \
-        $(patsubst $(PROJDIR)/%.cpp,$(INTDIR)/%.o,$(CPPFILES)) \
-        $(patsubst $(COMMONDIR)/%.cpp,$(INTDIR)/common_%.o,$(COMMONFILES))
+        $(patsubst $(PROJDIR)/%.cpp,$(INTDIR)/%.o,$(CPPFILES))
 
 CFLAGS := --target=x86_64-pc-freebsd12-elf -fPIC -funwind-tables -c $(EXTRAFLAGS) -isysroot $(TOOLCHAIN) -isystem $(TOOLCHAIN)/include
 CXXFLAGS := $(CFLAGS) -isystem $(TOOLCHAIN)/include/c++/v1
@@ -51,12 +52,9 @@ $(INTDIR)/%.o: $(PROJDIR)/%.c | $(INTDIR)
 $(INTDIR)/%.o: $(PROJDIR)/%.cpp | $(INTDIR)
 	$(CXX) $(CXXFLAGS) -o $@ $<
 
-$(INTDIR)/common_%.o: $(COMMONDIR)/%.cpp | $(INTDIR)
-	$(CXX) $(CXXFLAGS) -o $@ $<
-
 # PS4 icon0.png must be 512x512, 24-bit RGB, without alpha.
 sce_sys/icon0.png: sce_sys/ICON0.PNG
-	convert "$<" -resize 512x512\! -background black -alpha remove -alpha off -depth 8 PNG24:"$@"
+	convert "$<" -resize 512x512\\! -background black -alpha remove -alpha off -depth 8 PNG24:"$@"
 	test -s "$@"
 
 # create-fself performs the PS4 ELF -> OELF -> FSELF pipeline.
@@ -64,7 +62,7 @@ sce_sys/icon0.png: sce_sys/ICON0.PNG
 eboot.bin: $(INTDIR) $(OBJS)
 	$(LD) $(OBJS) -o $(INTDIR)/blackout.elf $(LDFLAGS)
 	test -x $(CREATE_FSELF)
-	$(CREATE_FSELF) -in=$(INTDIR)/blackout.elf -out=$(INTDIR)/blackout.oelf -eboot=$@ -paid=0x3800000000000011 -ptype=fake
+	$(CREATE_FSELF) -in=$(INTDIR)/blackout.elf -out=$(INTDIR)/blackout.oelf -eboot=$@ -paid=0x3800000000000011
 	test -s $@
 	od -An -N4 -tx1 "$@" | grep -q "4f 15 3d 1d"
 
@@ -82,14 +80,27 @@ sce_sys/param.sfo: Makefile
 	$(PKGTOOL) sfo_setentry $@ TITLE_ID --type Utf8 --maxsize 12 --value '$(TITLE_ID)'
 	$(PKGTOOL) sfo_setentry $@ VERSION --type Utf8 --maxsize 8 --value '$(VERSION)'
 
-pkg.gp4: eboot.bin sce_sys/param.sfo sce_sys/icon0.png assets/USRDIR/BLACKOUT_MENU.png
+# Include the runtime PRXs and right-to-info PRX from the official OpenOrbis sample.
+$(SDK_SAMPLE)/sce_module/libSceFios2.prx:
+	test -s $@
+
+$(SDK_SAMPLE)/sce_module/libc.prx:
+	test -s $@
+
+$(SDK_SAMPLE)/sce_sys/about/right.prx:
+	test -s $@
+
+pkg.gp4: eboot.bin sce_sys/param.sfo sce_sys/icon0.png assets/USRDIR/BLACKOUT_MENU.png $(SDK_SAMPLE)/sce_module/libSceFios2.prx $(SDK_SAMPLE)/sce_module/libc.prx $(SDK_SAMPLE)/sce_sys/about/right.prx
 	rm -rf $(STAGE)
-	mkdir -p $(STAGE)/sce_sys $(STAGE)/USRDIR
+	mkdir -p $(STAGE)/sce_sys/about $(STAGE)/sce_module $(STAGE)/USRDIR
 	cp eboot.bin $(STAGE)/eboot.bin
 	cp sce_sys/param.sfo $(STAGE)/sce_sys/param.sfo
 	cp sce_sys/icon0.png $(STAGE)/sce_sys/icon0.png
 	cp assets/USRDIR/BLACKOUT_MENU.png $(STAGE)/USRDIR/BLACKOUT_MENU.png
-	printf '%s\n' '<?xml version="1.0" encoding="utf-8"?>' '<psproject fmt="gp4" version="1000">' '  <volume>' '    <volume_type>pkg_ps4_app</volume_type>' '    <volume_id>PS4VOLUME</volume_id>' '    <volume_ts>2026-11-12 00:00:00</volume_ts>' '    <package content_id="$(CONTENT_ID)" passcode="00000000000000000000000000000000" storage_type="digital50" app_type="full" />' '    <chunk_info chunk_count="1" scenario_count="1">' '      <chunks><chunk id="0" layer_no="0" label="Chunk #0" /></chunks>' '      <scenarios default_id="0"><scenario id="0" type="sp" initial_chunk_count="1" label="Scenario #0">0</scenario></scenarios>' '    </chunk_info>' '  </volume>' '  <files img_no="0">' '    <file targ_path="eboot.bin" orig_path="eboot.bin" />' '    <file targ_path="sce_sys/param.sfo" orig_path="sce_sys/param.sfo" />' '    <file targ_path="sce_sys/icon0.png" orig_path="sce_sys/icon0.png" />' '    <file targ_path="USRDIR/BLACKOUT_MENU.png" orig_path="USRDIR/BLACKOUT_MENU.png" />' '  </files>' '  <rootdir><dir targ_name="sce_sys" /><dir targ_name="USRDIR" /></rootdir>' '</psproject>' > $(STAGE)/pkg.gp4
+	cp $(SDK_SAMPLE)/sce_module/libSceFios2.prx $(STAGE)/sce_module/libSceFios2.prx
+	cp $(SDK_SAMPLE)/sce_module/libc.prx $(STAGE)/sce_module/libc.prx
+	cp $(SDK_SAMPLE)/sce_sys/about/right.prx $(STAGE)/sce_sys/about/right.prx
+	printf '%s\\n' '<?xml version="1.0" encoding="utf-8"?>' '<psproject fmt="gp4" version="1000">' '  <volume>' '    <volume_type>pkg_ps4_app</volume_type>' '    <volume_id>PS4VOLUME</volume_id>' '    <volume_ts>2026-11-13 00:00:00</volume_ts>' '    <package content_id="$(CONTENT_ID)" passcode="00000000000000000000000000000000" storage_type="digital50" app_type="full" />' '    <chunk_info chunk_count="1" scenario_count="1">' '      <chunks><chunk id="0" layer_no="0" label="Chunk #0" /></chunks>' '      <scenarios default_id="0"><scenario id="0" type="sp" initial_chunk_count="1" label="Scenario #0">0</scenario></scenarios>' '    </chunk_info>' '  </volume>' '  <files img_no="0">' '    <file targ_path="eboot.bin" orig_path="eboot.bin" />' '    <file targ_path="sce_sys/param.sfo" orig_path="sce_sys/param.sfo" />' '    <file targ_path="sce_sys/icon0.png" orig_path="sce_sys/icon0.png" />' '    <file targ_path="sce_sys/about/right.prx" orig_path="sce_sys/about/right.prx" />' '    <file targ_path="sce_module/libSceFios2.prx" orig_path="sce_module/libSceFios2.prx" />' '    <file targ_path="sce_module/libc.prx" orig_path="sce_module/libc.prx" />' '    <file targ_path="USRDIR/BLACKOUT_MENU.png" orig_path="USRDIR/BLACKOUT_MENU.png" />' '  </files>' '  <rootdir><dir targ_name="sce_sys"><dir targ_name="about" /></dir><dir targ_name="sce_module" /><dir targ_name="USRDIR" /></rootdir>' '</psproject>' > $(STAGE)/pkg.gp4
 	cp $(STAGE)/pkg.gp4 pkg.gp4
 
 $(CONTENT_ID).pkg: pkg.gp4
