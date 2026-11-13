@@ -25,7 +25,7 @@ GRAPHICS_OBJ := $(INTDIR)/graphics.o
 PNG_OBJ := $(INTDIR)/png.o
 OBJS := $(patsubst $(PROJDIR)/%.c,$(INTDIR)/%.o,$(CFILES)) \
         $(patsubst $(PROJDIR)/%.cpp,$(INTDIR)/%.o,$(CPPFILES)) \
-        $(GRAPHICS_OBJ) \\
+        $(GRAPHICS_OBJ) \
         $(PNG_OBJ)
 
 CFLAGS := --target=x86_64-pc-freebsd12-elf -fPIC -funwind-tables -c $(EXTRAFLAGS) -isysroot $(TOOLCHAIN) -isystem $(TOOLCHAIN)/include
