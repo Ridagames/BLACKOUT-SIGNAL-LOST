@@ -80,13 +80,20 @@ jobs:
           test -s eboot.bin
           test -s sce_sys/param.sfo
           test -s sce_sys/icon0.png
-          test -s IV0000-BLSG00001_00-0000000000000001.pkg
+          PKG="IV0000-BLSG00001_00-0000000000000001.pkg"
+          test -s "$PKG"
           od -An -N4 -tx1 eboot.bin | grep -q "4f 15 3d 1d"
           identify -format '%m %wx%h %[channels]\\n' sce_sys/icon0.png
           test "$(identify -format '%wx%h' sce_sys/icon0.png)" = "512x512"
           test "$(identify -format '%[channels]' sce_sys/icon0.png)" = "srgb"
-          ls -lh eboot.bin sce_sys/param.sfo sce_sys/icon0.png IV0000-BLSG00001_00-0000000000000001.pkg
-          sha256sum eboot.bin sce_sys/param.sfo sce_sys/icon0.png IV0000-BLSG00001_00-0000000000000001.pkg
+          echo "===== SFO CONTENT ====="
+          "$OO_PS4_TOOLCHAIN/bin/linux/PkgTool.Core" sfo_listentries sce_sys/param.sfo
+          echo "===== PKG INTEGRITY VALIDATION ====="
+          "$OO_PS4_TOOLCHAIN/bin/linux/PkgTool.Core" pkg_validate --verbose "$PKG"
+          echo "===== PKG ENTRY TABLE ====="
+          "$OO_PS4_TOOLCHAIN/bin/linux/PkgTool.Core" pkg_listentries "$PKG"
+          ls -lh eboot.bin sce_sys/param.sfo sce_sys/icon0.png "$PKG"
+          sha256sum eboot.bin sce_sys/param.sfo sce_sys/icon0.png "$PKG"
 
       - uses: actions/upload-artifact@v4
         with:
