@@ -56,18 +56,26 @@ jobs:
           grep -q "BLACKOUT_DIAGNOSTIC_STARTED" source/main.cpp
           grep -q "create-fself" Makefile
           grep -q -- "-lc -lkernel -lc++" Makefile
-          ! grep -q "SDK_SAMPLE\|libSceFios2.prx\|right.prx" Makefile
+          grep -q "sce_module/libc.prx" Makefile
+          grep -q "sce_module/libSceFios2.prx" Makefile
+          grep -q "create-gp4" Makefile
+          ! grep -q "SDK_SAMPLE" Makefile
           ! grep -q "create-eboot" Makefile
           ! grep -q "PSL1GHT\\|PS3DEV\\|mcpu=cell\\|lgcm_sys\\|lNoRSX" Makefile
 
-      - name: Vérifier OpenOrbis et create-fself
+      - name: Vérifier OpenOrbis, les PRX et les outils
         run: |
           set -eu
           test -x /usr/local/bin/create-fself
           test -x /lib/OpenOrbisSDK/bin/linux/PkgTool.Core
+          test -x /lib/OpenOrbisSDK/bin/linux/create-gp4
+          test -s /lib/OpenOrbisSDK/bin/data/modules/libc.prx
+          test -s /lib/OpenOrbisSDK/bin/data/modules/libSceFios2.prx
           test -s source/common/graphics.cpp
           test -s source/common/png.cpp
           test -f /lib/OpenOrbisSDK/include/stb/stb_image.h
+          echo "===== OPENORBIS PRX MODULES ====="
+          ls -lh /lib/OpenOrbisSDK/bin/data/modules/libc.prx /lib/OpenOrbisSDK/bin/data/modules/libSceFios2.prx
 
       - name: Compiler et créer le vrai PKG PS4
         run: |
@@ -82,6 +90,8 @@ jobs:
           test -s eboot.bin
           test -s sce_sys/param.sfo
           test -s sce_sys/icon0.png
+          test -s build/pkg/sce_module/libc.prx
+          test -s build/pkg/sce_module/libSceFios2.prx
           PKG="IV0000-BLSG00001_00-0000000000000001.pkg"
           test -s "$PKG"
           od -An -N4 -tx1 eboot.bin | grep -q "4f 15 3d 1d"
@@ -94,8 +104,8 @@ jobs:
           "$OO_PS4_TOOLCHAIN/bin/linux/PkgTool.Core" pkg_validate --verbose "$PKG"
           echo "===== PKG ENTRY TABLE ====="
           "$OO_PS4_TOOLCHAIN/bin/linux/PkgTool.Core" pkg_listentries "$PKG"
-          ls -lh eboot.bin sce_sys/param.sfo sce_sys/icon0.png "$PKG"
-          sha256sum eboot.bin sce_sys/param.sfo sce_sys/icon0.png "$PKG"
+          ls -lh eboot.bin sce_sys/param.sfo sce_sys/icon0.png build/pkg/sce_module/libc.prx build/pkg/sce_module/libSceFios2.prx "$PKG"
+          sha256sum eboot.bin sce_sys/param.sfo sce_sys/icon0.png build/pkg/sce_module/libc.prx build/pkg/sce_module/libSceFios2.prx "$PKG"
 
       - uses: actions/upload-artifact@v4
         with:
