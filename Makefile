@@ -17,7 +17,7 @@ MODULE_SOURCE := $(TOOLCHAIN)/bin/data/modules
 LIBC_PRX := $(MODULE_SOURCE)/libc.prx
 FIOS_PRX := $(MODULE_SOURCE)/libSceFios2.prx
 
-LIBS := -lc -lkernel -lc++
+LIBS := -lc -lkernel -lc++ -lSceVideoOut
 EXTRAFLAGS := -O2 -Wall
 CFILES := $(wildcard $(PROJDIR)/*.c)
 CPPFILES := $(wildcard $(PROJDIR)/*.cpp)
