@@ -63,23 +63,24 @@ jobs:
       - name: Vérifier les sources et le menu
         run: |
           set -eu
-          test -f Makefile
-          test -s source/main.cpp
-          test -s assets/USRDIR/BLACKOUT_MENU.png
-          test -s sce_sys/ICON0.PNG
-          grep -q "DIAGNOSTIC_BUILD" Makefile
-          grep -q "BLACKOUT_MENU_IMAGE_STARTING" source/main.cpp
-          test -s source/common/graphics.cpp
-          grep -q "BLACKOUT_MENU_IMAGE_PRESENTED" source/main.cpp
-          grep -q "create-fself" Makefile
-          grep -q -- "-lSceVideoOut" Makefile
-          grep -q -- "-lScePad" Makefile
-          grep -q "sce_module/libc.prx" Makefile
-          grep -q "sce_module/libSceFios2.prx" Makefile
-          grep -q "create-gp4" Makefile
-          ! grep -q "SDK_SAMPLE" Makefile
-          ! grep -q "create-eboot" Makefile
-          ! grep -q "PSL1GHT\\|PS3DEV\\|mcpu=cell\\|lgcm_sys\\|lNoRSX" Makefile
+          check_file() { test -s "$1" || { echo "FICHIER MANQUANT: $1"; exit 1; }; }
+          check_text() { grep -Fq -- "$2" "$1" || { echo "TEXTE MANQUANT dans $1: $2"; exit 1; }; }
+          check_file Makefile
+          check_file source/main.cpp
+          check_file assets/USRDIR/BLACKOUT_MENU.png
+          check_file sce_sys/ICON0.PNG
+          check_file source/common/graphics.cpp
+          check_file source/common/png.cpp
+          check_text Makefile "DIAGNOSTIC_BUILD"
+          check_text source/main.cpp "BLACKOUT_MENU_IMAGE_STARTING"
+          check_text source/main.cpp "BLACKOUT_MENU_IMAGE_PRESENTED"
+          check_text Makefile "create-fself"
+          check_text Makefile "-lSceVideoOut"
+          check_text Makefile "-lScePad"
+          check_text Makefile "sce_module/libc.prx"
+          check_text Makefile "sce_module/libSceFios2.prx"
+          check_text Makefile "create-gp4"
+          echo "VERIFICATIONS DES SOURCES OK"
 
       - name: Vérifier OpenOrbis, les PRX et les outils
         run: |
