@@ -9,19 +9,19 @@ CREATE_FSELF ?= create-fself
 PROJDIR := source
 INTDIR := $(PROJDIR)/x64/Debug
 STAGE := build/pkg
-COMMONDIR := source/common
+DIAGNOSTIC_BUILD := 1
 
-LIBS := -lc -lkernel -lc++ -lSceSysUtil -lSceVideoOut -lScePad -lSceUserService
+LIBS := -lc -lkernel
 EXTRAFLAGS := -O2 -Wall
 CFILES := $(wildcard $(PROJDIR)/*.c)
 CPPFILES := $(wildcard $(PROJDIR)/*.cpp)
-COMMONFILES := $(wildcard $(COMMONDIR)/graphics.cpp $(COMMONDIR)/png.cpp)
+COMMONFILES :=
 OBJS := $(patsubst $(PROJDIR)/%.c,$(INTDIR)/%.o,$(CFILES)) \
         $(patsubst $(PROJDIR)/%.cpp,$(INTDIR)/%.o,$(CPPFILES)) \
         $(patsubst $(COMMONDIR)/%.cpp,$(INTDIR)/common_%.o,$(COMMONFILES))
 
 CFLAGS := --target=x86_64-pc-freebsd12-elf -fPIC -funwind-tables -c $(EXTRAFLAGS) -isysroot $(TOOLCHAIN) -isystem $(TOOLCHAIN)/include
-CXXFLAGS := $(CFLAGS) -isystem $(TOOLCHAIN)/include/c++/v1 -I$(COMMONDIR)
+CXXFLAGS := $(CFLAGS) -isystem $(TOOLCHAIN)/include/c++/v1
 LDFLAGS := -m elf_x86_64 -pie --script $(TOOLCHAIN)/link.x --eh-frame-hdr -L$(TOOLCHAIN)/lib $(LIBS) $(TOOLCHAIN)/lib/crt1.o
 
 UNAME_S := $(shell uname -s)
