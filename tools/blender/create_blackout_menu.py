@@ -4,7 +4,7 @@ import sys
 from mathutils import Vector
 
 # BLACKOUT: SIGNAL LOST — photorealistic horror-menu environment.
-# Runs headlessly in Blender on the GitHub Actions build worker.
+# Runs in a virtual X display on the GitHub Actions build worker.
 
 args = sys.argv[sys.argv.index("--") + 1:] if "--" in sys.argv else []
 output = args[0] if args else "/workspace/BLACKOUT_MENU.png"
