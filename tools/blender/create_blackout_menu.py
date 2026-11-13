@@ -33,6 +33,33 @@ glass = material("Dirty glass", (0.018, 0.027, 0.028), 0.18, 0.3)
 red = material("Emergency red", (0.22, 0.012, 0.006), 0.5)
 black = material("Near black", (0.008, 0.011, 0.011), 0.95)
 
+# Procedural surface detail: mottled plaster, grime and damp concrete.
+def add_weathering(mat, scale, roughness=0.9, bump_strength=0.22):
+    nodes = mat.node_tree.nodes
+    links = mat.node_tree.links
+    bs = nodes.get("Principled BSDF")
+    tex = nodes.new("ShaderNodeTexNoise")
+    tex.inputs["Scale"].default_value = scale
+    tex.inputs["Detail"].default_value = 5.0
+    tex.inputs["Roughness"].default_value = 0.78
+    ramp = nodes.new("ShaderNodeValToRGB")
+    ramp.color_ramp.elements[0].position = 0.22
+    ramp.color_ramp.elements[0].color = (0.025,0.030,0.029,1)
+    ramp.color_ramp.elements[1].position = 0.78
+    ramp.color_ramp.elements[1].color = (0.24,0.25,0.23,1)
+    bump = nodes.new("ShaderNodeBump")
+    bump.inputs["Strength"].default_value = bump_strength
+    bump.inputs["Distance"].default_value = 0.075
+    links.new(tex.outputs["Fac"], ramp.inputs["Fac"])
+    links.new(ramp.outputs["Color"], bs.inputs["Base Color"])
+    links.new(tex.outputs["Fac"], bump.inputs["Height"])
+    links.new(bump.outputs["Normal"], bs.inputs["Normal"])
+    bs.inputs["Roughness"].default_value = roughness
+
+add_weathering(concrete, 3.8, 0.94, 0.30)
+add_weathering(paint, 5.5, 0.91, 0.24)
+add_weathering(floor_mat, 2.0, 0.34, 0.12)
+
 def cube(name, loc, scale, mat, bevel=0.0):
     bpy.ops.mesh.primitive_cube_add(size=1, location=loc)
     o = bpy.context.object
