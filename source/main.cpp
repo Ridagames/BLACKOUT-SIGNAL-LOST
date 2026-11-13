@@ -195,9 +195,17 @@ static unsigned int pollPressed(int pad, OrbisPadData &state)
     previousButtons = current;
     lastPadButtons = (int)state.buttons;
 
+    // scePadReadState fournit les boutons. scePadRead fournit les axes analogiques.
+    // On ne consulte les sticks que si la lecture complete a reussi et que le pad est connecte.
+    OrbisPadData analogState = {};
+    const int analogResult = scePadRead(pad, &analogState, 1);
+    if (analogResult == 0 && analogState.connected) {
+        state.leftStick = analogState.leftStick;
+    }
+
     // Secours analogique : les sticks PS4 sont centres autour de 128.
     // Une zone morte evite les mouvements fantomes au repos.
-    if (pressed == 0) {
+    if (pressed == 0 && analogResult == 0 && analogState.connected) {
         const int y = (int)state.leftStick.y - 128;
         const int x = (int)state.leftStick.x - 128;
         if (y < -48) {
