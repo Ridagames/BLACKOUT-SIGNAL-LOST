@@ -72,8 +72,8 @@ jobs:
           check_file source/common/graphics.cpp
           check_file source/common/png.cpp
           check_text Makefile "DIAGNOSTIC_BUILD"
-          check_text source/main.cpp "BLACKOUT_MENU_IMAGE_STARTING"
-          check_text source/main.cpp "BLACKOUT_MENU_IMAGE_PRESENTED"
+          check_text source/main.cpp "BLACKOUT_MENU_FULLSCREEN_STARTING"
+          check_text source/main.cpp "BLACKOUT_MENU_IMAGE_LOAD_FAILED"
           check_text Makefile "create-fself"
           check_text Makefile "-lSceVideoOut"
           check_text Makefile "-lScePad"
