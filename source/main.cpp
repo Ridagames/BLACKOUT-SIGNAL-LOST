@@ -15,6 +15,10 @@ static int selected = 0;
 static int difficulty = 1;
 static MenuPage page = PAGE_MAIN;
 static unsigned int previousButtons = 0;
+static int lastPadReadResult = -999;
+static int lastPadButtons = 0;
+static int lastPadHandle = -1;
+static int stickRepeat = 0;
 
 static void write_status(const char *message)
 {
@@ -170,21 +174,45 @@ static void render(Scene2D &scene, PNG &background, int frameId)
 static unsigned int pollPressed(int pad, OrbisPadData &state)
 {
     std::memset(&state, 0, sizeof(state));
-    if (pad < 0 || scePadReadState(pad, &state) != 0) {
+    if (pad < 0) {
+        lastPadReadResult = -1;
         previousButtons = 0;
         return 0;
     }
 
-    // Navigation volontairement limitee aux boutons numeriques.
-    // Les axes analogiques sont ignores : une valeur de stick nulle au repos
-    // etait interpretee comme une direction haut et faisait defiler le menu seul.
+    lastPadReadResult = scePadReadState(pad, &state);
+    if (lastPadReadResult != 0) {
+        previousButtons = 0;
+        return 0;
+    }
+
     const unsigned int menuMask =
         ORBIS_PAD_BUTTON_UP | ORBIS_PAD_BUTTON_DOWN |
         ORBIS_PAD_BUTTON_LEFT | ORBIS_PAD_BUTTON_RIGHT |
         ORBIS_PAD_BUTTON_CROSS | ORBIS_PAD_BUTTON_CIRCLE;
     const unsigned int current = state.buttons & menuMask;
-    const unsigned int pressed = current & ~previousButtons;
+    unsigned int pressed = current & ~previousButtons;
     previousButtons = current;
+    lastPadButtons = (int)state.buttons;
+
+    // Secours analogique : les sticks PS4 sont centres autour de 128.
+    // Une zone morte evite les mouvements fantomes au repos.
+    if (pressed == 0) {
+        const int y = (int)state.leftStick.y - 128;
+        const int x = (int)state.leftStick.x - 128;
+        if (y < -48) {
+            if (stickRepeat == 0) { pressed |= ORBIS_PAD_BUTTON_UP; stickRepeat = 9; }
+        } else if (y > 48) {
+            if (stickRepeat == 0) { pressed |= ORBIS_PAD_BUTTON_DOWN; stickRepeat = 9; }
+        } else if (x < -48) {
+            if (stickRepeat == 0) { pressed |= ORBIS_PAD_BUTTON_LEFT; stickRepeat = 9; }
+        } else if (x > 48) {
+            if (stickRepeat == 0) { pressed |= ORBIS_PAD_BUTTON_RIGHT; stickRepeat = 9; }
+        } else {
+            stickRepeat = 0;
+        }
+    }
+    if (stickRepeat > 0) --stickRepeat;
     return pressed;
 }
 
@@ -220,10 +248,13 @@ int main()
     if (padInit == 0)
         pad = scePadOpen(0x10000000, 0, 0, NULL);
 
-    if (pad < 0) write_status("BLACKOUT_PAD_OPEN_FAILED");
-    else {
+    lastPadHandle = pad;
+    if (pad < 0) {
+        char message[96];
+        std::snprintf(message, sizeof(message), "BLACKOUT_PAD_OPEN_FAILED rc=%d", pad);
+        write_status(message);
+    } else {
         write_status("BLACKOUT_PAD_CONNECTED");
-        // Absorbe les boutons deja maintenus au lancement pour eviter un saut initial.
         OrbisPadData initial = {};
         if (scePadReadState(pad, &initial) == 0)
             previousButtons = initial.buttons & (ORBIS_PAD_BUTTON_UP | ORBIS_PAD_BUTTON_DOWN |
@@ -235,6 +266,15 @@ int main()
     for (;;) {
         OrbisPadData state = {};
         const unsigned int pressed = pollPressed(pad, state);
+        static int diagnosticTicks = 0;
+        if ((diagnosticTicks++ % 60) == 0 && pad >= 0) {
+            char message[128];
+            std::snprintf(message, sizeof(message),
+                "PAD handle=%d read=%d buttons=%04x connected=%u",
+                lastPadHandle, lastPadReadResult, lastPadButtons,
+                (unsigned)state.connected);
+            write_status(message);
+        }
         bool changed = false;
 
         if (page == PAGE_MAIN) {
