@@ -18,12 +18,22 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Installer ImageMagick pour l'icône PS4
+      - name: Installer ImageMagick et Blender
         run: |
           set -eu
           apt-get update
-          apt-get install -y imagemagick
+          apt-get install -y imagemagick blender
           convert -version
+          blender --version
+
+      - name: Générer le décor 3D du menu BLACKOUT
+        run: |
+          set -eu
+          mkdir -p assets/USRDIR
+          blender -b --python tools/blender/create_blackout_menu.py -- assets/USRDIR/BLACKOUT_MENU.png
+          test -s assets/USRDIR/BLACKOUT_MENU.png
+          identify -format '%m %wx%h\\n' assets/USRDIR/BLACKOUT_MENU.png
+          test "$(identify -format '%wx%h' assets/USRDIR/BLACKOUT_MENU.png)" = "1920x1080"
 
       - name: Récupérer create-fself officiel
         uses: actions/checkout@v4
@@ -68,6 +78,7 @@ jobs:
           check_file Makefile
           check_file source/main.cpp
           check_file assets/USRDIR/BLACKOUT_MENU.png
+          check_file tools/blender/create_blackout_menu.py
           check_file sce_sys/ICON0.PNG
           check_file source/common/graphics.cpp
           check_file source/common/png.cpp
