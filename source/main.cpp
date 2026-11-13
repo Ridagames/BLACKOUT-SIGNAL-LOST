@@ -240,11 +240,11 @@ static void applyVibration(int pad)
 {
     if (pad < 0 || !vibrationEnabled) return;
     OrbisPadVibeParam vibe;
-    vibe.largeMotor = 0;
-    vibe.smallMotor = 90;
+    vibe.lgMotor = 0;
+    vibe.smMotor = 90;
     scePadSetVibration(pad, &vibe);
     sceKernelUsleep(40000);
-    OrbisPadVibeParam off; off.largeMotor = 0; off.smallMotor = 0;
+    OrbisPadVibeParam off; off.lgMotor = 0; off.smMotor = 0;
     scePadSetVibration(pad, &off);
 }
 
@@ -326,7 +326,7 @@ int main()
                     vibrationEnabled = !vibrationEnabled;
                     if (vibrationEnabled) applyVibration(pad);
                     else if (pad >= 0) {
-                        OrbisPadVibeParam off; off.largeMotor = 0; off.smallMotor = 0;
+                        OrbisPadVibeParam off; off.lgMotor = 0; off.smMotor = 0;
                         scePadSetVibration(pad, &off);
                     }
                 } else {
