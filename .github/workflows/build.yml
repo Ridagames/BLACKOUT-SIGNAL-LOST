@@ -55,6 +55,8 @@ jobs:
           grep -q "DIAGNOSTIC_BUILD" Makefile
           grep -q "BLACKOUT_DIAGNOSTIC_STARTED" source/main.cpp
           grep -q "create-fself" Makefile
+          grep -q -- "-lc -lkernel -lc++" Makefile
+          grep -q "libSceFios2.prx" Makefile
           ! grep -q "create-eboot" Makefile
           ! grep -q "PSL1GHT\\|PS3DEV\\|mcpu=cell\\|lgcm_sys\\|lNoRSX" Makefile
 
