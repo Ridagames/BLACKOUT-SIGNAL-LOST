@@ -61,7 +61,7 @@ eboot.bin: $(INTDIR) $(OBJS)
 	test -x $(CREATE_FSELF)
 	$(CREATE_FSELF) -in=$(INTDIR)/blackout.elf -out=$(INTDIR)/blackout.oelf -eboot=$@ -paid=0x3800000000000011 -ptype=fake
 	test -s $@
-	test "$(head -c 4 "$@" | od -An -tx1 | tr -d ' \\n')" = "4f153d1d"
+	od -An -N4 -tx1 "$@" | grep -q "4f 15 3d 1d"
 
 sce_sys/param.sfo: Makefile
 	mkdir -p sce_sys
