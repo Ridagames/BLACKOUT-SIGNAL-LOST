@@ -44,15 +44,17 @@ jobs:
           export PATH="$OO_PS4_TOOLCHAIN/bin/linux:$OO_PS4_TOOLCHAIN:$PATH"
           make clean
           make V=1
+          test -s source/x64/Debug/blackout.elf
           test -s eboot.bin
           test -s IV0000-BLSG00001_00-0000000000000001.pkg
-          ls -lh eboot.bin IV0000-BLSG00001_00-0000000000000001.pkg
-          sha256sum eboot.bin IV0000-BLSG00001_00-0000000000000001.pkg
+          ls -lh source/x64/Debug/blackout.elf eboot.bin IV0000-BLSG00001_00-0000000000000001.pkg
+          sha256sum source/x64/Debug/blackout.elf eboot.bin IV0000-BLSG00001_00-0000000000000001.pkg
 
       - uses: actions/upload-artifact@v4
         with:
           name: blackout-goldhen-menu
           path: |
+            source/x64/Debug/blackout.elf
             eboot.bin
             IV0000-BLSG00001_00-0000000000000001.pkg
           retention-days: 14
