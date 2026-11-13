@@ -3,10 +3,6 @@ name: BLACKOUT OpenGNM GPU hardware smoke
 on:
   push:
     branches: [main]
-    paths:
-      - ".github/workflows/gnm-smoke.yml"
-      - "source/**"
-      - "Makefile"
   workflow_dispatch:
 
 permissions:
