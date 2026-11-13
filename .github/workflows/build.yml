@@ -74,7 +74,7 @@ jobs:
           test -s sce_sys/param.sfo
           test -s sce_sys/ICON0.PNG
           test -s IV0000-BLSG00001_00-0000000000000001.pkg
-          python3 -c "from pathlib import Path; assert Path('eboot.bin').read_bytes()[:4] == bytes.fromhex('4f153d1d'), 'eboot.bin is not FSELF'"
+          test "$(head -c 4 eboot.bin | od -An -tx1 | tr -d ' \\n')" = "4f153d1d"
           ls -lh eboot.bin sce_sys/param.sfo sce_sys/ICON0.PNG IV0000-BLSG00001_00-0000000000000001.pkg
           sha256sum eboot.bin sce_sys/param.sfo sce_sys/ICON0.PNG IV0000-BLSG00001_00-0000000000000001.pkg
 
