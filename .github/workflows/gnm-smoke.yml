@@ -1,0 +1,94 @@
+name: BLACKOUT OpenGNM GPU hardware smoke
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/gnm-smoke.yml"
+      - "source/**"
+      - "Makefile"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  opengnm-hardware-smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    container:
+      image: openorbisofficial/toolchain:latest
+      options: --user root
+    steps:
+      - name: Checkout BLACKOUT
+        uses: actions/checkout@v4
+
+      - name: Checkout OpenGNM
+        uses: actions/checkout@v4
+        with:
+          repository: PS4-OpenGNM/opengnm
+          ref: c51243f333a1a964894903da080a508f7af4d91f
+          path: tools/opengnm
+
+      - name: Checkout OpenGNM sample assets
+        uses: actions/checkout@v4
+        with:
+          repository: PS4-OpenGNM/freegnm-examples
+          ref: ffd055563e5b849ebef1b276ba29e730199670f8
+          path: tools/freegnm-examples
+
+      - name: Checkout official create-fself
+        uses: actions/checkout@v4
+        with:
+          repository: OpenOrbis/create-fself
+          ref: f2da6229684ce320f673c06fceac9c218f621788
+          path: tools/create-fself-src
+
+      - name: Checkout official create-gp4
+        uses: actions/checkout@v4
+        with:
+          repository: OpenOrbis/create-gp4
+          ref: bf8e66e9e9bdd92e41e1697893bc8098a151fa24
+          path: tools/create-gp4-src
+
+      - name: Install Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: "1.17"
+
+      - name: Build official packaging tools
+        run: |
+          set -eu
+          go build -modfile=go-linux.mod -o /usr/local/bin/create-fself .
+          cd "$GITHUB_WORKSPACE/tools/create-gp4-src/cmd/create-gp4"
+          go build -o /usr/local/bin/create-gp4 .
+          test -x /usr/local/bin/create-fself
+          test -x /usr/local/bin/create-gp4
+
+      - name: Build OpenGNM GPU hardware smoke PKG
+        working-directory: tools/opengnm
+        run: |
+          set -eu
+          export OO_PS4_TOOLCHAIN=/lib/OpenOrbisSDK
+          cp config.orbis.mak config.mak
+          make clean
+          make hardware-smoke-pkg \
+            CC=clang LD=ld.lld AR=llvm-ar \
+            OO_PS4_TOOLCHAIN="$OO_PS4_TOOLCHAIN" \
+            CREATE_FSELF=/usr/local/bin/create-fself \
+            CREATE_GP4=/usr/local/bin/create-gp4 \
+            PKGTOOL="$OO_PS4_TOOLCHAIN/bin/linux/PkgTool.Core" \
+            PKG_ASSET_DIR="$GITHUB_WORKSPACE/tools/freegnm-examples/videoout-linear" \
+            RUNTIME_MODULE_DIR="$OO_PS4_TOOLCHAIN/bin/data/modules"
+          PKG="IV0000-OGNM00001_00-OPENGNMHWSMOKE00.pkg"
+          test -s "$PKG"
+          "$OO_PS4_TOOLCHAIN/bin/linux/PkgTool.Core" pkg_validate --verbose "$PKG"
+          ls -lh "$PKG"
+          sha256sum "$PKG"
+
+      - name: Upload OpenGNM hardware smoke PKG
+        uses: actions/upload-artifact@v4
+        with:
+          name: blackout-opengnm-gpu-smoke
+          path: tools/opengnm/IV0000-OGNM00001_00-OPENGNMHWSMOKE00.pkg
+          retention-days: 14
