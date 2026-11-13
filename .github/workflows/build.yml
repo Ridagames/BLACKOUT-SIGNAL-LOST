@@ -18,6 +18,13 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Installer ImageMagick pour l'icône PS4
+        run: |
+          set -eu
+          apt-get update
+          apt-get install -y imagemagick
+          convert -version
+
       - name: Récupérer create-fself officiel (version épinglée)
         uses: actions/checkout@v4
         with:
@@ -72,11 +79,14 @@ jobs:
           test -s source/x64/Debug/blackout.oelf
           test -s eboot.bin
           test -s sce_sys/param.sfo
-          test -s sce_sys/ICON0.PNG
+          test -s sce_sys/icon0.png
           test -s IV0000-BLSG00001_00-0000000000000001.pkg
           od -An -N4 -tx1 eboot.bin | grep -q "4f 15 3d 1d"
-          ls -lh eboot.bin sce_sys/param.sfo sce_sys/ICON0.PNG IV0000-BLSG00001_00-0000000000000001.pkg
-          sha256sum eboot.bin sce_sys/param.sfo sce_sys/ICON0.PNG IV0000-BLSG00001_00-0000000000000001.pkg
+          identify -format '%m %wx%h %[channels]\\n' sce_sys/icon0.png
+          test "$(identify -format '%wx%h' sce_sys/icon0.png)" = "512x512"
+          test "$(identify -format '%[channels]' sce_sys/icon0.png)" = "srgb"
+          ls -lh eboot.bin sce_sys/param.sfo sce_sys/icon0.png IV0000-BLSG00001_00-0000000000000001.pkg
+          sha256sum eboot.bin sce_sys/param.sfo sce_sys/icon0.png IV0000-BLSG00001_00-0000000000000001.pkg
 
       - uses: actions/upload-artifact@v4
         with:
@@ -84,6 +94,6 @@ jobs:
           path: |
             eboot.bin
             sce_sys/param.sfo
-            sce_sys/ICON0.PNG
+            sce_sys/icon0.png
             IV0000-BLSG00001_00-0000000000000001.pkg
           retention-days: 14
