@@ -6,6 +6,7 @@ CONTENT_ID := IV0000-BLSG00001_00-0000000000000001
 
 TOOLCHAIN := $(OO_PS4_TOOLCHAIN)
 CREATE_FSELF ?= create-fself
+CREATE_GP4 ?= /usr/local/bin/create-gp4
 PROJDIR := source
 INTDIR := $(PROJDIR)/x64/Debug
 STAGE := build/pkg
@@ -16,7 +17,6 @@ MODULE_SOURCE := $(TOOLCHAIN)/bin/data/modules
 LIBC_PRX := $(MODULE_SOURCE)/libc.prx
 FIOS_PRX := $(MODULE_SOURCE)/libSceFios2.prx
 
-# Match the official OpenOrbis hello_world sample runtime libraries.
 LIBS := -lc -lkernel -lc++
 EXTRAFLAGS := -O2 -Wall
 CFILES := $(wildcard $(PROJDIR)/*.c)
@@ -43,7 +43,6 @@ CDIR := macos
 endif
 
 PKGTOOL := $(TOOLCHAIN)/bin/$(CDIR)/PkgTool.Core
-CREATE_GP4 := $(TOOLCHAIN)/bin/$(CDIR)/create-gp4
 
 all: $(CONTENT_ID).pkg
 
@@ -56,12 +55,10 @@ $(INTDIR)/%.o: $(PROJDIR)/%.c | $(INTDIR)
 $(INTDIR)/%.o: $(PROJDIR)/%.cpp | $(INTDIR)
 	$(CXX) $(CXXFLAGS) -o $@ $<
 
-# PS4 icon0.png must be 512x512, 24-bit RGB, without alpha.
 sce_sys/icon0.png: sce_sys/ICON0.PNG
 	convert "$<" -resize '512x512!' -background black -alpha remove -alpha off -depth 8 PNG24:"$@"
 	test -s "$@"
 
-# create-fself performs the PS4 ELF -> OELF -> FSELF pipeline.
 eboot.bin: $(INTDIR) $(OBJS)
 	$(LD) $(OBJS) -o $(INTDIR)/blackout.elf $(LDFLAGS)
 	test -x $(CREATE_FSELF)
