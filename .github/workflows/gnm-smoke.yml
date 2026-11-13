@@ -59,6 +59,7 @@ jobs:
       - name: Build official packaging tools
         run: |
           set -eu
+          cd "$GITHUB_WORKSPACE/tools/create-fself-src/cmd/create-fself"
           go build -modfile=go-linux.mod -o /usr/local/bin/create-fself .
           cd "$GITHUB_WORKSPACE/tools/create-gp4-src/cmd/create-gp4"
           go build -o /usr/local/bin/create-gp4 .
