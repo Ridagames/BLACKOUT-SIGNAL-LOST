@@ -90,8 +90,8 @@ static void drawMenu(Scene2D &scene)
     const Color background = { 9, 11, 16 };
     const Color panel = { 17, 20, 27 };
     const Color panelLine = { 43, 47, 55 };
-    const Color red = { 190,  forty,  thirty };
-    const Color redBright = { 225,  seventy,  fifty };
+    const Color red = { 190, 40, 30 };
+    const Color redBright = { 225, 70, 50 };
     const Color white = { 225, 226, 224 };
     const Color muted = { 112, 119, 128 };
 
