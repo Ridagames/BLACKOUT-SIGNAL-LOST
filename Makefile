@@ -61,7 +61,7 @@ eboot.bin: $(INTDIR) $(OBJS)
 	test -x $(CREATE_FSELF)
 	$(CREATE_FSELF) -in=$(INTDIR)/blackout.elf -out=$(INTDIR)/blackout.oelf -eboot=$@ -paid=0x3800000000000011 -ptype=fake
 	test -s $@
-	python3 -c "from pathlib import Path; p=Path('$@'); assert p.read_bytes()[:4] == bytes.fromhex('4f153d1d'), 'eboot.bin is not an FSELF (bad magic)'"
+	test "$(od -An -N4 -tx1 "$@ | tr -d ' \\n')" = "4f153d1d"
 
 sce_sys/param.sfo: Makefile
 	mkdir -p sce_sys
