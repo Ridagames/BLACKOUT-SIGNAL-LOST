@@ -52,7 +52,7 @@ jobs:
           test -s source/main.cpp
           test -s assets/USRDIR/BLACKOUT_MENU.png
           test -s sce_sys/ICON0.PNG
-          grep -qi "SceVideoOut" Makefile
+          grep -q "DIAGNOSTIC_BUILD" Makefile
           grep -q "scePadReadState" source/main.cpp
           grep -q "create-fself" Makefile
           ! grep -q "create-eboot" Makefile
