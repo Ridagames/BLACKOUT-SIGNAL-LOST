@@ -111,9 +111,8 @@ static void drawMain(Scene2D &scene)
     panel(scene, 72, 55, 800, 950);
     drawHeader(scene, "MENU PRINCIPAL");
     menuItem(scene, 405, "NOUVELLE PARTIE", selected == 0);
-    menuItem(scene, 515, "CONTINUER", selected == 1, true);
-    menuItem(scene, 625, "OPTIONS", selected == 2);
-    menuItem(scene, 735, "QUITTER", selected == 3);
+    menuItem(scene, 535, "CONTINUER", selected == 1);
+    menuItem(scene, 665, "OPTIONS", selected == 2);
     scene.DrawRectangle(112, 865, 690, 2, {70, 48, 43});
     drawText(scene, "EXPLORER  -  SURVIVRE  -  COMPRENDRE", 112, 900, 2, {145, 151, 148});
     drawText(scene, "CROIX  VALIDER", 112, 958, 2, {220, 220, 208});
@@ -244,6 +243,9 @@ static void applyVibration(int pad)
     vibe.largeMotor = 0;
     vibe.smallMotor = 90;
     scePadSetVibration(pad, &vibe);
+    sceKernelUsleep(40000);
+    OrbisPadVibeParam off; off.largeMotor = 0; off.smallMotor = 0;
+    scePadSetVibration(pad, &off);
 }
 
 int main()
@@ -279,7 +281,7 @@ int main()
 
         if (page == PAGE_MAIN) {
             if (direction != 0) {
-                selected = (selected + direction + 4) % 4;
+                selected = (selected + direction + 3) % 3;
                 changed = true;
             }
             if (pressed & ORBIS_PAD_BUTTON_CROSS) {
