@@ -1,4 +1,5 @@
 #include <stdint.h>
+#include <stddef.h>
 #include <orbis/libkernel.h>
 #include <orbis/VideoOut.h>
 #include <orbis/Sysmodule.h>
@@ -10,7 +11,6 @@
 #include <proto-include.h>
 #endif
 
-// Color is used to pack together RGB information, and is used for every function that draws colored pixels.
 struct Color
 {
     uint8_t r;
@@ -21,56 +21,56 @@ struct Color
 class Scene2D
 {
 #ifdef GRAPHICS_USES_FONT
-	FT_Library ftLib;
+    FT_Library ftLib;
 #endif
-	
-	int width;
-	int height;
-	int depth;
-	int video;
-	
-	off_t directMemOff;
-	size_t directMemAllocationSize;
-	
-	uintptr_t videoMemSP;
-	void *videoMem;
-	
-	char **frameBuffers;
-	OrbisKernelEqueue flipQueue;
-	OrbisVideoOutBufferAttribute attr;
-	
-	int frameBufferSize;
-	int frameBufferCount;
-	
-	int activeFrameBufferIdx;
 
-	bool initFlipQueue();
-	bool allocateFrameBuffers(int num);
-	char *allocateDisplayMem(size_t size);
-	bool allocateVideoMem(size_t size, int alignment);
-	void deallocateVideoMem();
+    int width;
+    int height;
+    int depth;
+    int video;
+
+    off_t directMemOff;
+    size_t directMemAllocationSize;
+
+    uintptr_t videoMemSP;
+    void *videoMem;
+
+    char **frameBuffers;
+    OrbisKernelEqueue flipQueue;
+    OrbisVideoOutBufferAttribute attr;
+
+    size_t frameBufferSize;
+    int frameBufferCount;
+
+    int activeFrameBufferIdx;
+
+    bool initFlipQueue();
+    bool allocateFrameBuffers(int num);
+    char *allocateDisplayMem(size_t size);
+    bool allocateVideoMem(size_t size, int alignment);
+    void deallocateVideoMem();
 
 public:
-	Scene2D(int w, int h, int pixelDepth);
-	~Scene2D();
-	
-	bool Init(size_t memSize, int numFrameBuffers);
-	
-	void SetActiveFrameBuffer(int index);
-	void SubmitFlip(int frameID);
-	
-	void FrameWait(int frameID);
-	void FrameBufferSwap();
-	void FrameBufferClear();
-	void FrameBufferFill(Color color);
-	
-	void DrawPixel(int x, int y, Color color);
-	void DrawRectangle(int x, int y, int w, int h, Color color);
-	
+    Scene2D(int w, int h, int pixelDepth);
+    ~Scene2D();
+
+    bool Init(size_t memSize, int numFrameBuffers);
+
+    void SetActiveFrameBuffer(int index);
+    void SubmitFlip(int frameID);
+
+    void FrameWait(int frameID);
+    void FrameBufferSwap();
+    void FrameBufferClear();
+    void FrameBufferFill(Color color);
+
+    void DrawPixel(int x, int y, Color color);
+    void DrawRectangle(int x, int y, int w, int h, Color color);
+
 #ifdef GRAPHICS_USES_FONT
-	bool InitFont(FT_Face *face, const char *fontPath, int fontSize);
-	void DrawText(char *txt, FT_Face face, int startX, int startY, Color bgColor, Color fgColor);
-	void DrawTextContainer(char *txt, FT_Face face, int startX, int startY, int maxW, int maxH, Color bgColor, Color fgColor);
+    bool InitFont(FT_Face *face, const char *fontPath, int fontSize);
+    void DrawText(char *txt, FT_Face face, int startX, int startY, Color bgColor, Color fgColor);
+    void DrawTextContainer(char *txt, FT_Face face, int startX, int startY, int maxW, int maxH, Color bgColor, Color fgColor);
 #endif
 };
 
