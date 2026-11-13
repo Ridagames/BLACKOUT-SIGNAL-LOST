@@ -22,9 +22,11 @@ EXTRAFLAGS := -O2 -Wall
 CFILES := $(wildcard $(PROJDIR)/*.c)
 CPPFILES := $(wildcard $(PROJDIR)/*.cpp)
 GRAPHICS_OBJ := $(INTDIR)/graphics.o
+PNG_OBJ := $(INTDIR)/png.o
 OBJS := $(patsubst $(PROJDIR)/%.c,$(INTDIR)/%.o,$(CFILES)) \
         $(patsubst $(PROJDIR)/%.cpp,$(INTDIR)/%.o,$(CPPFILES)) \
-        $(GRAPHICS_OBJ)
+        $(GRAPHICS_OBJ) \\
+        $(PNG_OBJ)
 
 CFLAGS := --target=x86_64-pc-freebsd12-elf -fPIC -funwind-tables -c $(EXTRAFLAGS) -isysroot $(TOOLCHAIN) -isystem $(TOOLCHAIN)/include
 CXXFLAGS := $(CFLAGS) -isystem $(TOOLCHAIN)/include/c++/v1
@@ -58,6 +60,9 @@ $(INTDIR)/%.o: $(PROJDIR)/%.cpp | $(INTDIR)
 	$(CXX) $(CXXFLAGS) -o $@ $<
 
 $(GRAPHICS_OBJ): $(PROJDIR)/common/graphics.cpp $(PROJDIR)/common/graphics.h | $(INTDIR)
+	$(CXX) $(CXXFLAGS) -o $@ $<
+
+$(PNG_OBJ): $(PROJDIR)/common/png.cpp $(PROJDIR)/common/png.h $(PROJDIR)/common/graphics.h | $(INTDIR)
 	$(CXX) $(CXXFLAGS) -o $@ $<
 
 sce_sys/icon0.png: sce_sys/ICON0.PNG
