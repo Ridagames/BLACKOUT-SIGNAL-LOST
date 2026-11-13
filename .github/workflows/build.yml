@@ -1,4 +1,4 @@
-name: Build PS4 Homebrew
+name: Build PS4 Homebrew (OpenOrbis FSELF)
 
 on:
   push:
@@ -18,43 +18,72 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Récupérer create-fself officiel (version épinglée)
+        uses: actions/checkout@v4
+        with:
+          repository: OpenOrbis/create-fself
+          ref: f2da6229684ce320f673c06fceac9c218f621788
+          path: tools/create-fself-src
+
+      - name: Installer Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.17'
+
+      - name: Compiler create-fself
+        working-directory: tools/create-fself-src/cmd/create-fself
+        run: |
+          set -eu
+          go build -modfile=go-linux.mod -o /usr/local/bin/create-fself .
+          test -x /usr/local/bin/create-fself
+          /usr/local/bin/create-fself -h
+
       - name: Vérifier les sources et le menu
         run: |
           set -eu
           test -f Makefile
           test -s source/main.cpp
           test -s assets/USRDIR/BLACKOUT_MENU.png
+          test -s sce_sys/ICON0.PNG
           grep -qi "SceVideoOut" Makefile
           grep -q "scePadReadState" source/main.cpp
-          ! grep -q "diagnostic build started" source/main.cpp
+          grep -q "create-fself" Makefile
+          ! grep -q "create-eboot" Makefile
+          ! grep -q "PSL1GHT\\|PS3DEV\\|mcpu=cell\\|lgcm_sys\\|lNoRSX" Makefile
 
-      - name: Vérifier les outils OpenOrbis
+      - name: Vérifier OpenOrbis et create-fself
         run: |
           set -eu
-          test -x /lib/OpenOrbisSDK/bin/linux/create-eboot
+          test -x /usr/local/bin/create-fself
           test -x /lib/OpenOrbisSDK/bin/linux/PkgTool.Core
           test -s source/common/graphics.cpp
           test -s source/common/png.cpp
           test -f /lib/OpenOrbisSDK/include/stb/stb_image.h
 
-      - name: Compiler et créer le PKG
+      - name: Compiler et créer le vrai PKG PS4
         run: |
           set -eu
           export OO_PS4_TOOLCHAIN=/lib/OpenOrbisSDK
-          export PATH="$OO_PS4_TOOLCHAIN/bin/linux:$OO_PS4_TOOLCHAIN:$PATH"
+          export CREATE_FSELF=/usr/local/bin/create-fself
+          export PATH="$OO_PS4_TOOLCHAIN/bin/linux:$OO_PS4_TOOLCHAIN:/usr/local/bin:$PATH"
           make clean
           make V=1
           test -s source/x64/Debug/blackout.elf
+          test -s source/x64/Debug/blackout.oelf
           test -s eboot.bin
+          test -s sce_sys/param.sfo
+          test -s sce_sys/ICON0.PNG
           test -s IV0000-BLSG00001_00-0000000000000001.pkg
-          ls -lh source/x64/Debug/blackout.elf eboot.bin IV0000-BLSG00001_00-0000000000000001.pkg
-          sha256sum source/x64/Debug/blackout.elf eboot.bin IV0000-BLSG00001_00-0000000000000001.pkg
+          python3 -c "from pathlib import Path; assert Path('eboot.bin').read_bytes()[:4] == bytes.fromhex('4f153d1d'), 'eboot.bin is not FSELF'"
+          ls -lh eboot.bin sce_sys/param.sfo sce_sys/ICON0.PNG IV0000-BLSG00001_00-0000000000000001.pkg
+          sha256sum eboot.bin sce_sys/param.sfo sce_sys/ICON0.PNG IV0000-BLSG00001_00-0000000000000001.pkg
 
       - uses: actions/upload-artifact@v4
         with:
-          name: blackout-goldhen-menu
+          name: blackout-ps4-fself-pkg
           path: |
-            source/x64/Debug/blackout.elf
             eboot.bin
+            sce_sys/param.sfo
+            sce_sys/ICON0.PNG
             IV0000-BLSG00001_00-0000000000000001.pkg
           retention-days: 14
