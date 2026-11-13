@@ -25,12 +25,19 @@ jobs:
           apt-get install -y imagemagick
           convert -version
 
-      - name: Récupérer create-fself officiel (version épinglée)
+      - name: Récupérer create-fself officiel
         uses: actions/checkout@v4
         with:
           repository: OpenOrbis/create-fself
           ref: f2da6229684ce320f673c06fceac9c218f621788
           path: tools/create-fself-src
+
+      - name: Récupérer create-gp4 officiel
+        uses: actions/checkout@v4
+        with:
+          repository: OpenOrbis/create-gp4
+          ref: bf8e66e9e9bdd92e41e1697893bc8098a151fa24
+          path: tools/create-gp4-src
 
       - name: Installer Go
         uses: actions/setup-go@v5
@@ -44,6 +51,14 @@ jobs:
           go build -modfile=go-linux.mod -o /usr/local/bin/create-fself .
           test -x /usr/local/bin/create-fself
           /usr/local/bin/create-fself -h
+
+      - name: Compiler create-gp4
+        working-directory: tools/create-gp4-src/cmd/create-gp4
+        run: |
+          set -eu
+          go build -o /usr/local/bin/create-gp4 .
+          test -x /usr/local/bin/create-gp4
+          /usr/local/bin/create-gp4 -h
 
       - name: Vérifier les sources et le menu
         run: |
@@ -67,8 +82,8 @@ jobs:
         run: |
           set -eu
           test -x /usr/local/bin/create-fself
+          test -x /usr/local/bin/create-gp4
           test -x /lib/OpenOrbisSDK/bin/linux/PkgTool.Core
-          test -x /lib/OpenOrbisSDK/bin/linux/create-gp4
           test -s /lib/OpenOrbisSDK/bin/data/modules/libc.prx
           test -s /lib/OpenOrbisSDK/bin/data/modules/libSceFios2.prx
           test -s source/common/graphics.cpp
@@ -82,6 +97,7 @@ jobs:
           set -eu
           export OO_PS4_TOOLCHAIN=/lib/OpenOrbisSDK
           export CREATE_FSELF=/usr/local/bin/create-fself
+          export CREATE_GP4=/usr/local/bin/create-gp4
           export PATH="$OO_PS4_TOOLCHAIN/bin/linux:$OO_PS4_TOOLCHAIN:/usr/local/bin:$PATH"
           make clean
           make V=1
