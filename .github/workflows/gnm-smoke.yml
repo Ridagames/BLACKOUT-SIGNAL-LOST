@@ -68,6 +68,7 @@ jobs:
           set -eu
           export OO_PS4_TOOLCHAIN=/lib/OpenOrbisSDK
           cp config.orbis.mak config.mak
+          printf '\nCFLAGS += -D_BSD_SOURCE -D_DEFAULT_SOURCE\n' >> config.mak
           make clean
           make hardware-smoke-pkg \
             CC=clang LD=ld.lld AR=llvm-ar \
