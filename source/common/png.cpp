@@ -7,52 +7,47 @@
 
 PNG::PNG(const char *imagePath)
 {
-	this->img = (uint32_t *)stbi_load(imagePath, &this->width, &this->height, &this->channels, STBI_rgb_alpha);
-
- 	if (this->img == NULL)
-	{
-		(void)0;
-		return;
-	}
+    width = 0;
+    height = 0;
+    channels = 0;
+    img = (uint32_t *)stbi_load(imagePath, &width, &height, &channels, STBI_rgb_alpha);
 }
 
 PNG::~PNG()
 {
-	if(this->img != NULL)
-		stbi_image_free(this->img);
+    if (img != NULL)
+        stbi_image_free(img);
+}
+
+bool PNG::IsLoaded() const
+{
+    return img != NULL && width > 0 && height > 0;
 }
 
 void PNG::Draw(Scene2D *scene, int startX, int startY)
 {
-	// Don't draw non-existant images
-	if(this->img == NULL)
-		return;
-		
-	// Iterate the bitmap and draw the pixels
-	for (int yPos = 0; yPos < this->height; yPos++)
-	{
-		for (int xPos = 0; xPos < this->width; xPos++)
-		{
-			// Decode the 32-bit color
-			uint32_t encodedColor = this->img[(yPos * this->width) + xPos];
-
-			// Get new pixel coordinates to account for start coordinates
-			int x = startX + xPos;
- 			int y = startY + yPos;
-
-			// Re-encode the color
-			uint8_t r = (uint8_t)(encodedColor >> 0);
-			uint8_t g = (uint8_t)(encodedColor >> 8);
-			uint8_t b = (uint8_t)(encodedColor >> 16);
-
-			Color color = { r, g, b };
-
-			// Do some bounds checking to make sure the pixel is actually inside the frame buffer
-			if (xPos < 0 || yPos < 0 || xPos >= this->width || yPos >= this->height)
-				continue;
-
-			scene->DrawPixel(x, y, color);
-		}
-	}
+    if (!IsLoaded())
+        return;
+    DrawScaled(scene, startX, startY, width, height);
 }
 
+void PNG::DrawScaled(Scene2D *scene, int startX, int startY, int drawWidth, int drawHeight)
+{
+    if (!IsLoaded() || scene == NULL || drawWidth <= 0 || drawHeight <= 0)
+        return;
+
+    // Mise a l'echelle plein ecran, sans recadrage de l'image.
+    for (int y = 0; y < drawHeight; ++y) {
+        const int sourceY = (int)(((int64_t)y * height) / drawHeight);
+        for (int x = 0; x < drawWidth; ++x) {
+            const int sourceX = (int)(((int64_t)x * width) / drawWidth);
+            const uint32_t pixel = img[(size_t)sourceY * (size_t)width + (size_t)sourceX];
+            Color color = {
+                (uint8_t)(pixel & 0xFF),
+                (uint8_t)((pixel >> 8) & 0xFF),
+                (uint8_t)((pixel >> 16) & 0xFF)
+            };
+            scene->DrawPixel(startX + x, startY + y, color);
+        }
+    }
+}
