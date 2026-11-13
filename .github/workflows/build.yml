@@ -68,7 +68,9 @@ jobs:
           test -s assets/USRDIR/BLACKOUT_MENU.png
           test -s sce_sys/ICON0.PNG
           grep -q "DIAGNOSTIC_BUILD" Makefile
-          grep -q "BLACKOUT_DIAGNOSTIC_STARTED" source/main.cpp
+          grep -q "BLACKOUT_VIDEO_TEST_STARTING" source/main.cpp
+          test -s source/common/graphics.cpp
+          grep -q "BLACKOUT_VIDEO_INIT_OK_SCREEN_PRESENTED" source/main.cpp
           grep -q "create-fself" Makefile
           grep -q -- "-lc -lkernel -lc++" Makefile
           grep -q "sce_module/libc.prx" Makefile
