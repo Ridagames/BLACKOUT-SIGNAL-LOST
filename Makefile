@@ -54,7 +54,7 @@ $(INTDIR)/%.o: $(PROJDIR)/%.cpp | $(INTDIR)
 
 # PS4 icon0.png must be 512x512, 24-bit RGB, without alpha.
 sce_sys/icon0.png: sce_sys/ICON0.PNG
-	convert "$<" -resize 512x512\\! -background black -alpha remove -alpha off -depth 8 PNG24:"$@"
+	convert "$<" -resize '512x512!' -background black -alpha remove -alpha off -depth 8 PNG24:"$@"
 	test -s "$@"
 
 # create-fself performs the PS4 ELF -> OELF -> FSELF pipeline.
