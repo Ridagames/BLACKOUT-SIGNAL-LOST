@@ -70,7 +70,6 @@ def cube(name, loc, scale, mat, bevel=0.0):
         mod = o.modifiers.new("Worn softened edges", "BEVEL")
         mod.width = bevel
         mod.segments = 2
-        o.modifiers.new("Weighted corner normals", "WEIGHTED_NORMAL")
     return o
 
 def cylinder(name, loc, radius, depth, mat, rot=(0,0,0)):
