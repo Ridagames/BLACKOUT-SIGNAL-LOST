@@ -13,6 +13,7 @@
 #define SCREEN_W 1920
 #define SCREEN_H 1080
 #define FRAME_DEPTH 4
+#define VIDEO_MEMORY_SIZE (32 * 1024 * 1024)
 
 std::stringstream debugLogStream;
 
@@ -53,7 +54,6 @@ static void drawMenu(Scene2D *scene, PNG *background, int selected, int screen)
     scene->FrameBufferFill(black);
     background->Draw(scene, 0, 0);
 
-    // Contraste du menu et bandeau de sélection.
     scene->DrawRectangle(105, 170, 760, 720, black);
     scene->DrawRectangle(105, 170, 8, 720, red);
     drawText(scene, "BLACKOUT", 160, 220, 9, white);
@@ -89,7 +89,7 @@ int main()
     setvbuf(stdout, nullptr, _IONBF, 0);
 
     Scene2D scene(SCREEN_W, SCREEN_H, FRAME_DEPTH);
-    if (!scene.Init(0xC000000, 2)) {
+    if (!scene.Init(VIDEO_MEMORY_SIZE, 2)) {
         std::printf("BLACKOUT: video initialization failed\n");
         for (;;) sceKernelUsleep(1000000);
     }
