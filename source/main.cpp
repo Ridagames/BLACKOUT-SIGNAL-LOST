@@ -1,5 +1,6 @@
 #include <cstdio>
 #include <cstring>
+#include <cstdint>
 #include <orbis/Pad.h>
 #include "common/graphics.h"
 #include "common/png.h"
@@ -7,10 +8,26 @@
 static const int SCREEN_W = 1920;
 static const int SCREEN_H = 1080;
 
+enum MenuPage {
+    PAGE_MAIN = 0,
+    PAGE_NEW_GAME,
+    PAGE_CONTINUE,
+    PAGE_OPTIONS,
+    PAGE_INTRO
+};
+
+static bool vibrationEnabled = true;
+static int selected = 0;
+static int difficulty = 1;
+static int page = PAGE_MAIN;
+static unsigned int previousButtons = 0;
+static int repeatDelay = 0;
+static int repeatDirection = 0;
+
 static void write_status(const char *message)
 {
     FILE *log = std::fopen("/data/blackout_diag.txt", "w");
-    if (log != nullptr) {
+    if (log) {
         std::fprintf(log, "%s\n", message);
         std::fflush(log);
         std::fclose(log);
@@ -20,105 +37,219 @@ static void write_status(const char *message)
 static const unsigned char *glyph(char c)
 {
     static const unsigned char blank[7] = {0,0,0,0,0,0,0};
-    static const unsigned char A[7] = {14,17,17,31,17,17,17};
-    static const unsigned char B[7] = {30,17,17,30,17,17,30};
-    static const unsigned char C[7] = {14,17,16,16,16,17,14};
-    static const unsigned char D[7] = {30,17,17,17,17,17,30};
-    static const unsigned char E[7] = {31,16,16,30,16,16,31};
-    static const unsigned char I[7] = {31,4,4,4,4,4,31};
-    static const unsigned char L[7] = {16,16,16,16,16,16,31};
-    static const unsigned char N[7] = {17,25,25,21,19,19,17};
-    static const unsigned char O[7] = {14,17,17,17,17,17,14};
-    static const unsigned char P[7] = {30,17,17,30,16,16,16};
-    static const unsigned char R[7] = {30,17,17,30,20,18,17};
-    static const unsigned char S[7] = {15,16,16,14,1,1,30};
-    static const unsigned char T[7] = {31,4,4,4,4,4,4};
-    static const unsigned char U[7] = {17,17,17,17,17,17,14};
-    static const unsigned char V[7] = {17,17,17,17,17,10,4};
-    static const unsigned char G[7] = {14,17,16,23,17,17,14};
-    static const unsigned char H[7] = {17,17,17,31,17,17,17};
-    static const unsigned char M[7] = {17,27,21,21,17,17,17};
-    static const unsigned char  zero[7] = {14,17,19,21,25,17,14};
-    switch (c) {
-        case 'A': return A; case 'B': return B; case 'C': return C;
-        case 'D': return D; case 'E': return E; case 'G': return G;
-        case 'H': return H; case 'I': return I; case 'L': return L;
-        case 'M': return M; case 'N': return N; case 'O': return O;
-        case 'P': return P; case 'R': return R; case 'S': return S;
-        case 'T': return T; case 'U': return U; case 'V': return V;
-        case '0': return zero; default: return blank;
-    }
+    static const unsigned char table[37][7] = {
+        {14,17,17,31,17,17,17}, {30,17,17,30,17,17,30},
+        {14,17,16,16,16,17,14}, {30,17,17,17,17,17,30},
+        {31,16,16,30,16,16,31}, {31,16,16,30,16,16,16},
+        {14,17,16,23,17,17,14}, {17,17,17,31,17,17,17},
+        {31,4,4,4,4,4,31}, {7,2,2,2,18,18,12},
+        {17,18,20,24,20,18,17}, {16,16,16,16,16,16,31},
+        {17,27,21,21,17,17,17}, {17,25,25,21,19,19,17},
+        {14,17,17,17,17,17,14}, {30,17,17,30,16,16,16},
+        {14,17,17,17,21,18,13}, {30,17,17,30,20,18,17},
+        {15,16,16,14,1,1,30}, {31,4,4,4,4,4,4},
+        {17,17,17,17,17,17,14}, {17,17,17,17,17,10,4},
+        {17,17,17,21,21,21,10}, {17,17,10,4,10,17,17},
+        {17,17,10,4,4,4,4}, {31,1,2,4,8,16,31},
+        {14,17,19,21,25,17,14}, {4,12,4,4,4,4,14},
+        {14,17,1,2,4,8,31}, {30,1,1,14,1,1,30},
+        {2,6,10,18,31,2,2}, {31,16,16,30,1,1,30},
+        {14,16,16,30,17,17,14}, {31,1,2,4,8,8,8},
+        {14,17,17,14,17,17,14}, {14,17,17,15,1,1,14},
+        {0,0,0,0,0,0,0}
+    };
+    if (c >= 'A' && c <= 'Z') return table[c - 'A'];
+    if (c >= '0' && c <= '9') return table[26 + c - '0'];
+    if (c == '-') return table[36];
+    return blank;
 }
 
 static void drawText(Scene2D &scene, const char *text, int x, int y, int scale, Color color)
 {
     for (int i = 0; text[i] != '\0'; ++i) {
         const unsigned char *rows = glyph(text[i]);
-        for (int row = 0; row < 7; ++row) {
-            for (int col = 0; col < 5; ++col) {
+        if (text[i] == ' ') continue;
+        for (int row = 0; row < 7; ++row)
+            for (int col = 0; col < 5; ++col)
                 if (rows[row] & (1u << (4 - col)))
-                    scene.DrawRectangle(x + (i * 6 + col) * scale,
+                    scene.DrawRectangle(x + (i * 7 + col) * scale,
                                         y + row * scale, scale, scale, color);
-            }
-        }
     }
 }
 
-static void drawButton(Scene2D &scene, int y, const char *label, bool selected)
+static void panel(Scene2D &scene, int x, int y, int w, int h)
 {
-    const Color panel = selected ? Color{45, 19, 17} : Color{8, 10, 12};
-    const Color border = selected ? Color{230, 65, 38} : Color{90, 75, 70};
-    const Color text = selected ? Color{255, 225, 205} : Color{185, 185, 180};
-
-    scene.DrawRectangle(112, y, 590, 82, panel);
-    scene.DrawRectangle(112, y, 7, 82, border);
-    scene.DrawRectangle(119, y, 583, 2, border);
-    scene.DrawRectangle(119, y + 80, 583, 2, border);
-    if (selected)
-        scene.DrawRectangle(680, y + 12, 5, 58, border);
-    drawText(scene, label, 155, y + 27, 4, text);
+    scene.DrawRectangle(x, y, w, h, {5, 8, 10});
+    scene.DrawRectangle(x, y, 5, h, {184, 42, 29});
+    scene.DrawRectangle(x + 5, y, w - 5, 2, {70, 48, 43});
+    scene.DrawRectangle(x + 5, y + h - 2, w - 5, 2, {70, 48, 43});
 }
 
-static void render(Scene2D &scene, PNG &background, int selected, int page, int frameId)
+static void menuItem(Scene2D &scene, int y, const char *label, bool active, bool disabled = false)
+{
+    Color mainText = disabled ? Color{92, 94, 94} :
+                     active ? Color{255, 231, 214} : Color{184, 188, 187};
+    if (active) {
+        scene.DrawRectangle(112, y - 13, 690, 72, {38, 15, 14});
+        scene.DrawRectangle(112, y - 13, 6, 72, {230, 69, 42});
+        scene.DrawRectangle(808, y - 13, 3, 72, {115, 44, 35});
+        drawText(scene, ">", 137, y + 7, 4, {255, 100, 65});
+    }
+    drawText(scene, label, 183, y, 4, mainText);
+}
+
+static void drawHeader(Scene2D &scene, const char *section)
+{
+    drawText(scene, "BLACKOUT", 112, 92, 7, {242, 238, 226});
+    drawText(scene, "SIGNAL LOST", 115, 160, 3, {221, 74, 49});
+    scene.DrawRectangle(112, 215, 690, 3, {164, 49, 34});
+    drawText(scene, section, 112, 255, 3, {174, 178, 174});
+}
+
+static void drawMain(Scene2D &scene)
+{
+    panel(scene, 72, 55, 800, 950);
+    drawHeader(scene, "MENU PRINCIPAL");
+    menuItem(scene, 405, "NOUVELLE PARTIE", selected == 0);
+    menuItem(scene, 515, "CONTINUER", selected == 1, true);
+    menuItem(scene, 625, "OPTIONS", selected == 2);
+    menuItem(scene, 735, "QUITTER", selected == 3);
+    scene.DrawRectangle(112, 865, 690, 2, {70, 48, 43});
+    drawText(scene, "EXPLORER  -  SURVIVRE  -  COMPRENDRE", 112, 900, 2, {145, 151, 148});
+    drawText(scene, "CROIX  VALIDER", 112, 958, 2, {220, 220, 208});
+    drawText(scene, "ROND  RETOUR", 420, 958, 2, {170, 174, 170});
+}
+
+static void drawNewGame(Scene2D &scene)
+{
+    panel(scene, 72, 55, 800, 950);
+    drawHeader(scene, "NOUVELLE PARTIE");
+    drawText(scene, "CHOISIR LA DIFFICULTE", 112, 405, 3, {220, 220, 210});
+    const char *names[3] = {"FACILE", "NORMAL", "DIFFICILE"};
+    for (int i = 0; i < 3; ++i) {
+        int x = 112 + i * 225;
+        bool active = difficulty == i;
+        scene.DrawRectangle(x, 500, 205, 105, active ? Color{48, 19, 16} : Color{13, 17, 18});
+        scene.DrawRectangle(x, 500, 205, 4, active ? Color{226, 68, 42} : Color{72, 76, 73});
+        if (active) scene.DrawRectangle(x, 500, 5, 105, {226, 68, 42});
+        drawText(scene, names[i], x + 20, 545, 3,
+                 active ? Color{255, 225, 205} : Color{160, 165, 161});
+    }
+    drawText(scene, "GAUCHE / DROITE  CHANGER", 112, 680, 2, {170, 175, 170});
+    menuItem(scene, 790, "COMMENCER", selected == 0);
+    menuItem(scene, 895, "RETOUR", selected == 1);
+    drawText(scene, "CROIX  VALIDER     ROND  RETOUR", 112, 970, 2, {205, 207, 198});
+}
+
+static void drawContinue(Scene2D &scene)
+{
+    panel(scene, 72, 55, 800, 950);
+    drawHeader(scene, "CONTINUER");
+    drawText(scene, "AUCUNE SAUVEGARDE", 112, 490, 4, {235, 226, 211});
+    drawText(scene, "LES PARTIES SAUVEGARDEES", 112, 565, 2, {165, 171, 167});
+    drawText(scene, "APPARAITRONT ICI", 112, 600, 2, {165, 171, 167});
+    menuItem(scene, 790, "RETOUR", true);
+    drawText(scene, "ROND  RETOUR", 112, 958, 2, {205, 207, 198});
+}
+
+static void drawOptions(Scene2D &scene)
+{
+    panel(scene, 72, 55, 800, 950);
+    drawHeader(scene, "OPTIONS");
+    menuItem(scene, 425, vibrationEnabled ? "VIBRATION  ACTIVE" : "VIBRATION  DESACTIVEE", selected == 0);
+    menuItem(scene, 545, "RETOUR", selected == 1);
+    drawText(scene, "CROIX OU GAUCHE / DROITE  MODIFIER", 112, 760, 2, {165, 171, 167});
+    drawText(scene, "ROND  RETOUR", 112, 958, 2, {205, 207, 198});
+}
+
+static void drawIntro(Scene2D &scene)
+{
+    panel(scene, 72, 55, 800, 950);
+    drawHeader(scene, "PROLOGUE");
+    drawText(scene, "SIGNAL LOST", 112, 460, 6, {226, 72, 48});
+    drawText(scene, "DIFFICULTE SELECTIONNEE", 112, 590, 2, {175, 180, 174});
+    const char *names[3] = {"FACILE", "NORMAL", "DIFFICILE"};
+    drawText(scene, names[difficulty], 112, 630, 3, {240, 230, 215});
+    drawText(scene, "LE PROLOGUE SERA AJOUTE", 112, 760, 2, {165, 171, 167});
+    drawText(scene, "DANS LA PROCHAINE ETAPE DU JEU", 112, 795, 2, {165, 171, 167});
+    drawText(scene, "ROND  RETOUR AU MENU", 112, 958, 2, {205, 207, 198});
+}
+
+static void render(Scene2D &scene, PNG &background, int frameId)
 {
     scene.FrameBufferFill({0, 0, 0});
     if (background.IsLoaded())
         background.DrawScaled(&scene, 0, 0, SCREEN_W, SCREEN_H);
 
-    if (page == 0) {
-        drawButton(scene, 650, "NOUVELLE PARTIE", selected == 0);
-        drawButton(scene, 750, "CONTINUER", selected == 1);
-        drawButton(scene, 850, "OPTIONS", selected == 2);
-        drawText(scene, "CROIX VALIDER", 120, 985, 3, {225, 225, 215});
-        drawText(scene, "ROND RETOUR", 520, 985, 3, {175, 175, 170});
-    } else if (page == 1) {
-        scene.DrawRectangle(100, 620, 780, 300, {5, 8, 10});
-        scene.DrawRectangle(100, 620, 8, 300, {220, 55, 35});
-        drawText(scene, "PROLOGUE", 145, 680, 7, {245, 235, 220});
-        drawText(scene, "SIGNAL LOST", 145, 770, 5, {220, 65, 45});
-        drawText(scene, "DEBUT DE PARTIE A VENIR", 145, 850, 3, {205, 205, 195});
-        drawText(scene, "ROND RETOUR", 145, 965, 3, {225, 225, 215});
-    } else if (page == 2) {
-        scene.DrawRectangle(100, 620, 780, 300, {5, 8, 10});
-        scene.DrawRectangle(100, 620, 8, 300, {220, 55, 35});
-        drawText(scene, "AUCUNE SAUVEGARDE", 145, 700, 5, {245, 235, 220});
-        drawText(scene, "ROND RETOUR", 145, 820, 4, {225, 225, 215});
-    } else {
-        scene.DrawRectangle(100, 620, 780, 300, {5, 8, 10});
-        scene.DrawRectangle(100, 620, 8, 300, {220, 55, 35});
-        drawText(scene, "OPTIONS", 145, 670, 6, {245, 235, 220});
-        drawText(scene, "SON ACTIVE", 145, 770, 4, {205, 205, 195});
-        drawText(scene, "ROND RETOUR", 145, 850, 4, {225, 225, 215});
-    }
+    // Contraste sombre a gauche pour garder l'illustration visible.
+    scene.DrawRectangle(0, 0, 930, SCREEN_H, {3, 5, 7});
+    scene.DrawRectangle(930, 0, 5, SCREEN_H, {82, 30, 24});
+    if (page == PAGE_MAIN) drawMain(scene);
+    else if (page == PAGE_NEW_GAME) drawNewGame(scene);
+    else if (page == PAGE_CONTINUE) drawContinue(scene);
+    else if (page == PAGE_OPTIONS) drawOptions(scene);
+    else drawIntro(scene);
 
     scene.SubmitFlip(frameId);
     scene.FrameWait(frameId);
 }
 
+static unsigned int pollPressed(int pad, OrbisPadData &state)
+{
+    std::memset(&state, 0, sizeof(state));
+    if (pad < 0 || scePadReadState(pad, &state) != 0) {
+        previousButtons = 0;
+        return 0;
+    }
+    unsigned int pressed = state.buttons & ~previousButtons;
+    previousButtons = state.buttons;
+    return pressed;
+}
+
+static int navigationDirection(const OrbisPadData &state, unsigned int pressed)
+{
+    int direction = 0;
+    if (pressed & ORBIS_PAD_BUTTON_UP) direction = -1;
+    else if (pressed & ORBIS_PAD_BUTTON_DOWN) direction = 1;
+    else if (state.leftStick.y < 75) direction = -1;
+    else if (state.leftStick.y > 180) direction = 1;
+
+    if (direction == 0) {
+        repeatDirection = 0;
+        repeatDelay = 0;
+        return 0;
+    }
+    if (pressed & (ORBIS_PAD_BUTTON_UP | ORBIS_PAD_BUTTON_DOWN)) {
+        repeatDirection = direction;
+        repeatDelay = 22;
+        return direction;
+    }
+    if (direction != repeatDirection) {
+        repeatDirection = direction;
+        repeatDelay = 22;
+        return direction;
+    }
+    if (repeatDelay > 0) {
+        --repeatDelay;
+        return 0;
+    }
+    repeatDelay = 6;
+    return direction;
+}
+
+static void applyVibration(int pad)
+{
+    if (pad < 0 || !vibrationEnabled) return;
+    OrbisPadVibeParam vibe;
+    vibe.largeMotor = 0;
+    vibe.smallMotor = 90;
+    scePadSetVibration(pad, &vibe);
+}
+
 int main()
 {
     const size_t frameBytes = (size_t)SCREEN_W * (size_t)SCREEN_H * 4u;
-    write_status("BLACKOUT_MENU_FULLSCREEN_STARTING");
+    write_status("BLACKOUT_MENU_STARTING");
 
     Scene2D scene(SCREEN_W, SCREEN_H, 4);
     if (!scene.Init(frameBytes * 2u, 2)) {
@@ -130,56 +261,95 @@ int main()
     if (!background.IsLoaded())
         write_status("BLACKOUT_MENU_IMAGE_LOAD_FAILED");
 
+    int padInit = scePadInit();
     int pad = -1;
-    if (scePadInit() == 0)
-        pad = scePadOpen(1, 0, 0, NULL);
+    if (padInit == 0) {
+        // Identifiant du premier utilisateur PS4, pas le nombre 1.
+        pad = scePadOpen(0x10000000, 0, 0, NULL);
+    }
+    if (pad < 0) write_status("BLACKOUT_PAD_OPEN_FAILED");
+    else write_status("BLACKOUT_PAD_CONNECTED");
 
-    int selected = 0;
-    int page = 0;
-    unsigned int previousButtons = 0;
     int frameId = 0;
-
     for (;;) {
         OrbisPadData state;
-        std::memset(&state, 0, sizeof(state));
-        unsigned int pressed = 0;
-        if (pad >= 0 && scePadReadState(pad, &state) == 0) {
-            pressed = state.buttons & ~previousButtons;
-            previousButtons = state.buttons;
-        }
-
+        unsigned int pressed = pollPressed(pad, state);
+        int direction = navigationDirection(state, pressed);
         bool changed = false;
-        if (page == 0) {
-            if (pressed & ORBIS_PAD_BUTTON_UP) {
-                selected = (selected + 2) % 3;
-                changed = true;
-            }
-            if (pressed & ORBIS_PAD_BUTTON_DOWN) {
-                selected = (selected + 1) % 3;
+
+        if (page == PAGE_MAIN) {
+            if (direction != 0) {
+                selected = (selected + direction + 4) % 4;
                 changed = true;
             }
             if (pressed & ORBIS_PAD_BUTTON_CROSS) {
-                page = selected + 1;
+                applyVibration(pad);
+                if (selected == 0) {
+                    page = PAGE_NEW_GAME;
+                    selected = 0;
+                } else if (selected == 1) {
+                    page = PAGE_CONTINUE;
+                    selected = 0;
+                } else if (selected == 2) {
+                    page = PAGE_OPTIONS;
+                    selected = 0;
+                } else {
+                    selected = 0;
+                }
                 changed = true;
-                if (selected == 0) write_status("BLACKOUT_NEW_GAME_SELECTED");
-                else if (selected == 1) write_status("BLACKOUT_CONTINUE_SELECTED");
-                else write_status("BLACKOUT_OPTIONS_OPENED");
             }
-        } else if (pressed & ORBIS_PAD_BUTTON_CIRCLE) {
-            page = 0;
-            changed = true;
-            write_status("BLACKOUT_MAIN_MENU");
+        } else if (page == PAGE_NEW_GAME) {
+            if (pressed & ORBIS_PAD_BUTTON_LEFT) difficulty = (difficulty + 2) % 3, changed = true;
+            if (pressed & ORBIS_PAD_BUTTON_RIGHT) difficulty = (difficulty + 1) % 3, changed = true;
+            if (direction != 0) selected = (selected + direction + 2) % 2, changed = true;
+            if (pressed & ORBIS_PAD_BUTTON_CROSS) {
+                applyVibration(pad);
+                if (selected == 0) {
+                    page = PAGE_INTRO;
+                    write_status("BLACKOUT_NEW_GAME_READY");
+                } else {
+                    page = PAGE_MAIN;
+                    selected = 0;
+                }
+                changed = true;
+            }
+            if (pressed & ORBIS_PAD_BUTTON_CIRCLE) {
+                page = PAGE_MAIN; selected = 0; changed = true;
+            }
+        } else if (page == PAGE_OPTIONS) {
+            if (direction != 0) selected = (selected + direction + 2) % 2, changed = true;
+            if ((pressed & ORBIS_PAD_BUTTON_CROSS) ||
+                (selected == 0 && (pressed & (ORBIS_PAD_BUTTON_LEFT | ORBIS_PAD_BUTTON_RIGHT)))) {
+                if (selected == 0) {
+                    vibrationEnabled = !vibrationEnabled;
+                    if (vibrationEnabled) applyVibration(pad);
+                    else if (pad >= 0) {
+                        OrbisPadVibeParam off; off.largeMotor = 0; off.smallMotor = 0;
+                        scePadSetVibration(pad, &off);
+                    }
+                } else {
+                    page = PAGE_MAIN; selected = 0;
+                }
+                changed = true;
+            }
+            if (pressed & ORBIS_PAD_BUTTON_CIRCLE) {
+                page = PAGE_MAIN; selected = 0; changed = true;
+            }
+        } else {
+            if (pressed & ORBIS_PAD_BUTTON_CIRCLE) {
+                page = PAGE_MAIN; selected = 0; changed = true;
+            }
         }
 
-        if (frameId == 0 || changed) {
-            scene.SetActiveFrameBuffer(0);
-            render(scene, background, selected, page, frameId++);
-            scene.FrameBufferSwap();
-            render(scene, background, selected, page, frameId++);
-            scene.FrameBufferSwap();
+        if (page == PAGE_CONTINUE && (pressed & ORBIS_PAD_BUTTON_CROSS)) {
+            page = PAGE_MAIN; selected = 0; changed = true;
+        }
+
+        if (frameId == 0 || changed || (frameId % 120) == 0) {
+            scene.SetActiveFrameBuffer(frameId % 2);
+            render(scene, background, frameId++);
         }
         sceKernelUsleep(16000);
     }
-
     return 0;
 }
