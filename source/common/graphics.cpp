@@ -11,7 +11,7 @@
 
 Scene2D::~Scene2D()
 {
-    deallocateVideoMem();
+    // Le système libère les ressources vidéo à la fermeture du processus.
 }
 
 Scene2D::Scene2D(int w, int h, int pixelDepth)
