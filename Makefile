@@ -18,7 +18,8 @@ MODULE_SOURCE := $(TOOLCHAIN)/bin/data/modules
 LIBC_PRX := $(MODULE_SOURCE)/libc.prx
 FIOS_PRX := $(MODULE_SOURCE)/libSceFios2.prx
 
-LIBS := -lc -lkernel -lc++ -lSceVideoOut -lScePad -lSceUserService -lSceSysmodule
+OPENGNM_LIB := tools/opengnm/libopengnm.a
+LIBS := -lc -lkernel -lc++ -lSceVideoOut -lScePad -lSceUserService -lSceSysmodule -lSceGnmDriver
 EXTRAFLAGS := -O2 -Wall
 CFILES := $(wildcard $(PROJDIR)/*.c)
 CPPFILES := $(wildcard $(PROJDIR)/*.cpp)
@@ -31,7 +32,7 @@ OBJS := $(patsubst $(PROJDIR)/%.c,$(INTDIR)/%.o,$(CFILES)) \
 
 CFLAGS := -Itools/opengnm/include --target=x86_64-pc-freebsd12-elf -fPIC -funwind-tables -c $(EXTRAFLAGS) -isysroot $(TOOLCHAIN) -isystem $(TOOLCHAIN)/include
 CXXFLAGS := $(CFLAGS) -isystem $(TOOLCHAIN)/include/c++/v1 -DDIAGNOSTIC_BUILD=$(DIAGNOSTIC_BUILD)
-LDFLAGS := $(OPENGNM_LIB) -m elf_x86_64 -pie --script $(TOOLCHAIN)/link.x --eh-frame-hdr -L$(TOOLCHAIN)/lib $(LIBS) $(TOOLCHAIN)/lib/crt1.o
+LDFLAGS := -m elf_x86_64 -pie --script $(TOOLCHAIN)/link.x --eh-frame-hdr -L$(TOOLCHAIN)/lib $(LIBS) $(TOOLCHAIN)/lib/crt1.o
 
 UNAME_S := $(shell uname -s)
 ifeq ($(UNAME_S),Linux)
@@ -71,7 +72,7 @@ sce_sys/icon0.png: sce_sys/ICON0.PNG
 	test -s "$@"
 
 eboot.bin: $(INTDIR) $(OBJS)
-	$(LD) $(OBJS) -o $(INTDIR)/blackout.elf $(LDFLAGS)
+	$(LD) $(OBJS) $(OPENGNM_LIB) -o $(INTDIR)/blackout.elf $(LDFLAGS)
 	test -x $(CREATE_FSELF)
 	$(CREATE_FSELF) -in=$(INTDIR)/blackout.elf -out=$(INTDIR)/blackout.oelf -eboot=$@ -paid=0x3800000000000011
 	test -s $@
