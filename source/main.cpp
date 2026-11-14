@@ -7,7 +7,7 @@
 #include <orbis/Pad.h>
 #include <orbis/UserService.h>
 #include "common/graphics.h"
-#include "common/obj_renderer.h"
+#include "common/gpu_renderer.h"
 
 static const int SCREEN_W = 1920;
 static const int SCREEN_H = 1080;
@@ -203,15 +203,12 @@ static void drawDiagnostics(Scene2D &scene)
 
 #endif
 
-static void render(Scene2D &scene, ObjRenderer &background, int frameId)
+static void render(Scene2D &scene, int frameId)
 {
-    scene.FrameBufferFill({0, 0, 0});
-    const uint32_t *pixels = background.Render((float)frameId / 60.0f);
-    if (pixels)
-        scene.DrawARGBScaled(pixels, background.Width(), background.Height(),
-                             0, 0, SCREEN_W, SCREEN_H);
+    scene.FrameBufferClearTransparent();
 
-    // Interface de menu superposee au decor 3D temps reel.
+    // Le menu est dessine dans une texture de composition; la scene 3D,
+    // l'eclairage et le depth buffer sont calcules par le GPU GNM PS4.
     if (page == PAGE_MAIN) drawMain(scene);
     else if (page == PAGE_NEW_GAME) drawNewGame(scene);
     else if (page == PAGE_CONTINUE) drawContinue(scene);
@@ -221,8 +218,10 @@ static void render(Scene2D &scene, ObjRenderer &background, int frameId)
     #if DIAGNOSTIC_BUILD
     drawDiagnostics(scene);
     #endif
-    scene.SubmitFlip(frameId);
-    scene.FrameWait(frameId);
+
+    if (!GpuRenderer_Render(scene.GetPixels(), frameId))
+        write_status("BLACKOUT_GPU_RENDER_FAILED");
+    scene.FrameBufferSwap();
 }
 
 static unsigned int pollPressed(int pad, OrbisPadData &state)
@@ -312,21 +311,17 @@ static void applyVibration(int pad)
 
 int main()
 {
-    const size_t frameBytes = (size_t)SCREEN_W * (size_t)SCREEN_H * 4u;
     write_status("BLACKOUT_MENU_STARTING");
 
     Scene2D scene(SCREEN_W, SCREEN_H, 4);
-    if (!scene.Init(frameBytes * 2u, 2)) {
-        write_status("BLACKOUT_VIDEO_INIT_FAILED");
+    if (!scene.InitOverlay()) {
+        write_status("BLACKOUT_UI_OVERLAY_INIT_FAILED");
         for (;;) sceKernelUsleep(1000000);
     }
-
-    ObjRenderer menuScene;
-    const bool modelReady = menuScene.Load("/app0/USRDIR/MODELS/NEXUS9_MENU.OBJ");
-    if (modelReady)
-        write_status(menuScene.Error());
-    else
-        write_status(menuScene.Error());
+    if (!GpuRenderer_Init()) {
+        write_status("BLACKOUT_GNM_GPU_INIT_FAILED");
+        for (;;) sceKernelUsleep(1000000);
+    }
 
     // Initialisation et ouverture reprises du flux de controleur de PS MTP Explorer.
     const int padInit = scePadInit();
@@ -426,8 +421,7 @@ int main()
         }
 
         // Scene 3D OBJ rasterisee en temps reel : aucun MP4 ni sequence d'images.
-        scene.SetActiveFrameBuffer(frameId % 2);
-        render(scene, menuScene, frameId++);
+        render(scene, frameId++);
         sceKernelUsleep(12000);
     }
     return 0;
