@@ -8,6 +8,11 @@
 #include <orbis/libkernel.h>
 #include <compat/freegnm.h>
 #include <gnm/drawcommandbuffer.h>
+#include <gnm/buffer.h>
+#include <gnm/dataformat.h>
+#include <gnm/depthrendertarget.h>
+#include <gnm/gpuaddr/gpuaddr.h>
+#include <gnm/rendertarget.h>
 #include <gnmdriver.h>
 #include <gnm/shader.h>
 #include <gnm/platform.h>
@@ -23,6 +28,7 @@
 
 #define GPU_WIDTH 1920
 #define GPU_HEIGHT 1080
+#define SHADOW_SIZE 1024
 #define GPU_OVERLAY_BYTES ((size_t)GPU_WIDTH * (size_t)GPU_HEIGHT * 4u)
 
 typedef struct {
@@ -31,10 +37,29 @@ typedef struct {
 } UiDescriptorSet;
 
 typedef struct {
+    float lightViewProjection[16];
+    float model[16];
+} ShadowConstants;
+
+typedef struct {
+    GnmBuffer constbuf;
+} ShadowVsDescriptorSet;
+
+typedef struct {
     MemoryAllocator memory;
     DisplayContext display;
     GnmRenderTarget frameTargets[2];
     GnmDepthRenderTarget depthTarget;
+    GnmRenderTarget shadowTarget;
+    GnmDepthRenderTarget shadowDepthTarget;
+    GnmTexture shadowTexture;
+    GnmSampler shadowSampler;
+    GnmVsShader *shadowVertexShader;
+    GnmPsShader *shadowPixelShader;
+    void *shadowFetchMemory;
+    ShadowConstants *shadowConstants;
+    GnmBuffer shadowConstBuffer;
+    uint64_t *shadowBarrierLabel;
     GnmCommandBuffer commandBuffer;
     GnmPsShader *uiPixelShader;
     GnmTexture uiTexture;
@@ -99,6 +124,222 @@ static bool init_ui_texture(void)
     return true;
 }
 
+static bool init_shadow_map(void)
+{
+    GpaSurfaceProperties surface = {0};
+    GpaError gpaerr = gpaFindOptimalSurface(
+        &surface, GPA_SURFACE_COLORDISPLAY, 32, 1, false, gnmGpuMode()
+    );
+    if (gpaerr != GPA_ERR_OK) {
+        gpu_status("GPU_SHADOW_SURFACE_LAYOUT_FAILED");
+        return false;
+    }
+
+    const GnmRenderTargetCreateInfo rtInfo = {
+        .width = SHADOW_SIZE,
+        .height = SHADOW_SIZE,
+        .pitch = 0,
+        .numslices = 1,
+        .colorfmt = GNM_FMT_R32_FLOAT,
+        .colortilemodehint = surface.tilemode,
+        .mingpumode = gnmGpuMode(),
+        .numsamples = 1,
+        .numfragments = 1,
+    };
+    if (gnmCreateRenderTarget(&s_gpu.shadowTarget, &rtInfo) != GNM_ERROR_OK) {
+        gpu_status("GPU_SHADOW_TARGET_CREATE_FAILED");
+        return false;
+    }
+
+    uint64_t shadowBytes = 0;
+    uint32_t shadowAlignment = 0;
+    if (gnmRtCalcByteSize(&shadowBytes, &shadowAlignment, &s_gpu.shadowTarget) != GNM_ERROR_OK) {
+        gpu_status("GPU_SHADOW_TARGET_SIZE_FAILED");
+        return false;
+    }
+    void *shadowMemory = memalloc_alloc(&s_gpu.memory, shadowBytes, shadowAlignment);
+    if (!shadowMemory) {
+        gpu_status("GPU_SHADOW_TARGET_MEMORY_FAILED");
+        return false;
+    }
+    gnmRtSetBaseAddr(&s_gpu.shadowTarget, shadowMemory);
+
+    if (!initdepthtarget(
+            &s_gpu.shadowDepthTarget, &s_gpu.memory,
+            SHADOW_SIZE, SHADOW_SIZE, 0, 1, 1,
+            GNM_Z_32_FLOAT, GNM_STENCIL_INVALID, gnmGpuMode())) {
+        gpu_status("GPU_SHADOW_DEPTH_FAILED");
+        return false;
+    }
+
+    const GnmTextureCreateInfo textureInfo = {
+        .texturetype = GNM_TEXTURE_2D,
+        .width = SHADOW_SIZE,
+        .height = SHADOW_SIZE,
+        .depth = 1,
+        .pitch = gnmRtGetPitch(&s_gpu.shadowTarget),
+        .nummiplevels = 1,
+        .numslices = 1,
+        .format = GNM_FMT_R32_FLOAT,
+        .tilemodehint = surface.tilemode,
+        .mingpumode = gnmGpuMode(),
+        .numfragments = 1,
+    };
+    if (gnmCreateTexture(&s_gpu.shadowTexture, &textureInfo) != GNM_ERROR_OK) {
+        gpu_status("GPU_SHADOW_TEXTURE_CREATE_FAILED");
+        return false;
+    }
+    gnmTexSetBaseAddress(&s_gpu.shadowTexture, shadowMemory);
+    s_gpu.shadowSampler = (GnmSampler){
+        .xyminfilter = GNM_FILTER_BILINEAR,
+        .xymagfilter = GNM_FILTER_BILINEAR,
+        .mipfilter = GNM_MIPFILTER_LINEAR,
+        .zfilter = GNM_ZFILTER_POINT,
+        .minlod = 0,
+        .maxlod = 0,
+    };
+
+    if (!loadvshader(
+            &s_gpu.shadowVertexShader, &s_gpu.memory,
+            "/app0/USRDIR/SHADERS/nexus9_shadow.vert.sb") ||
+        !loadpshader(
+            &s_gpu.shadowPixelShader, &s_gpu.memory,
+            "/app0/USRDIR/SHADERS/nexus9_shadow.frag.sb")) {
+        gpu_status("GPU_SHADOW_SHADERS_LOAD_FAILED");
+        return false;
+    }
+
+    const GnmFetchShaderCreateInfo fetchInfo = {
+        .regs = &s_gpu.shadowVertexShader->registers,
+        .vtxinputs = gnmVsShaderInputSemanticTable(s_gpu.shadowVertexShader),
+        .numvtxinputs = s_gpu.shadowVertexShader->numinputsemantics,
+        .inputusages = gnmVsShaderInputUsageSlotTable(s_gpu.shadowVertexShader),
+        .numinputusages = s_gpu.shadowVertexShader->common.numinputusageslots,
+    };
+    uint32_t fetchBytes = 0;
+    if (gnmFetchShaderCalcSize(&fetchBytes, &fetchInfo) != GNM_ERROR_OK) {
+        gpu_status("GPU_SHADOW_FETCH_SIZE_FAILED");
+        return false;
+    }
+    s_gpu.shadowFetchMemory = memalloc_alloc(
+        &s_gpu.memory, fetchBytes, GNM_ALIGNMENT_FETCHSHADER_BYTES
+    );
+    if (!s_gpu.shadowFetchMemory) {
+        gpu_status("GPU_SHADOW_FETCH_MEMORY_FAILED");
+        return false;
+    }
+    GnmFetchShaderResults fetchResults = {0};
+    if (gnmCreateFetchShader(
+            s_gpu.shadowFetchMemory, fetchBytes, &fetchInfo, &fetchResults
+        ) != GNM_ERROR_OK) {
+        gpu_status("GPU_SHADOW_FETCH_CREATE_FAILED");
+        return false;
+    }
+    gnmVsRegsSetFetchShaderModifier(
+        &s_gpu.shadowVertexShader->registers, &fetchResults
+    );
+
+    s_gpu.shadowConstants = memalloc_alloc(
+        &s_gpu.memory, sizeof(ShadowConstants), GNM_ALIGNMENT_BUFFER_BYTES
+    );
+    if (!s_gpu.shadowConstants) {
+        gpu_status("GPU_SHADOW_CONSTANTS_FAILED");
+        return false;
+    }
+    memset(s_gpu.shadowConstants, 0, sizeof(ShadowConstants));
+    pass_model_get_light_matrix(s_gpu.shadowConstants->lightViewProjection);
+    s_gpu.shadowConstants->model[0] = 1.0f;
+    s_gpu.shadowConstants->model[5] = 1.0f;
+    s_gpu.shadowConstants->model[10] = 1.0f;
+    s_gpu.shadowConstants->model[15] = 1.0f;
+    s_gpu.shadowConstBuffer = gnmCreateConstBuffer(
+        s_gpu.shadowConstants, sizeof(ShadowConstants)
+    );
+
+    s_gpu.shadowBarrierLabel = memalloc_alloc(
+        &s_gpu.memory, sizeof(uint64_t), sizeof(uint64_t)
+    );
+    if (!s_gpu.shadowBarrierLabel) {
+        gpu_status("GPU_SHADOW_SYNC_LABEL_FAILED");
+        return false;
+    }
+    pass_model_set_shadow(s_gpu.shadowTexture, s_gpu.shadowSampler);
+    return true;
+}
+
+static void draw_shadow_map(void)
+{
+    const float clearColor[4] = {1.0f, 1.0f, 1.0f, 1.0f};
+    clearcolortarget(&s_gpu.commandBuffer, &s_gpu.shadowTarget, clearColor);
+    cleardepthtarget(&s_gpu.commandBuffer, &s_gpu.shadowDepthTarget, 1.0f);
+
+    const GnmPrimitiveSetup primitive = {
+        .cullmode = GNM_CULL_NONE,
+        .frontface = GNM_FACE_CCW,
+        .frontmode = GNM_FILL_SOLID,
+        .backmode = GNM_FILL_SOLID,
+        .provokemode = GNM_PROVOKINGVTX_FIRST,
+    };
+    const GnmBlendControl blend = {0};
+    const GnmDbRenderControl db = {0};
+    const GnmDepthStencilControl depth = {
+        .zwrite = true,
+        .zfunc = GNM_DEPTH_COMPARE_LESSEQUAL,
+        .stencilfunc = GNM_DEPTH_COMPARE_NEVER,
+        .stencilbackfunc = GNM_DEPTH_COMPARE_NEVER,
+        .separatestencilenable = false,
+        .depthenable = true,
+        .stencilenable = false,
+        .depthboundsenable = false,
+    };
+
+    gnmDrawCmdSetPrimitiveSetup(&s_gpu.commandBuffer, &primitive);
+    gnmDrawCmdSetBlendControl(&s_gpu.commandBuffer, 0, &blend);
+    gnmDrawCmdSetDbRenderControl(&s_gpu.commandBuffer, &db);
+    gnmDrawCmdSetDepthStencilControl(&s_gpu.commandBuffer, &depth);
+    gnmDrawCmdSetRenderTarget(&s_gpu.commandBuffer, 0, &s_gpu.shadowTarget);
+    gnmDrawCmdSetRenderTargetMask(&s_gpu.commandBuffer, 0x1);
+    gnmDrawCmdSetDepthRenderTarget(&s_gpu.commandBuffer, &s_gpu.shadowDepthTarget);
+    setupviewport(&s_gpu.commandBuffer, 0, 0, SHADOW_SIZE, SHADOW_SIZE, 0.5f, 0.5f);
+    gnmDrawCmdSetVsShader(&s_gpu.commandBuffer, &s_gpu.shadowVertexShader->registers, 0);
+    gnmDrawCmdSetPsShader(&s_gpu.commandBuffer, &s_gpu.shadowPixelShader->registers);
+    gnmDrawCmdSetPointerUserData(
+        &s_gpu.commandBuffer, GNM_STAGE_VS, 0, s_gpu.shadowFetchMemory
+    );
+    gnmDrawCmdSetPrimitiveType(&s_gpu.commandBuffer, GNM_PT_TRILIST);
+    gnmDrawCmdSetIndexSize(&s_gpu.commandBuffer, GNM_INDEX_32, GNM_POLICY_LRU);
+
+    for (size_t i = 0; i < uvlen(&s_gpu.model.PrimMeshes); ++i) {
+        R_Mesh *mesh = uvdata(&s_gpu.model.PrimMeshes, i);
+        gnmDrawCmdSetPointerUserData(
+            &s_gpu.commandBuffer, GNM_STAGE_VS, 2, mesh->vertbufs
+        );
+        ShadowVsDescriptorSet *descriptor = gnmCmdAllocInside(
+            &s_gpu.commandBuffer, sizeof(ShadowVsDescriptorSet), 4
+        );
+        if (!descriptor) continue;
+        descriptor->constbuf = s_gpu.shadowConstBuffer;
+        gnmDrawCmdSetPointerUserData(
+            &s_gpu.commandBuffer, GNM_STAGE_VS, 6, descriptor
+        );
+        gnmDrawCmdDrawIndex(
+            &s_gpu.commandBuffer, mesh->numindices, mesh->indexmem
+        );
+    }
+
+    gnmDrawCmdEventWriteEop(
+        &s_gpu.commandBuffer, GNM_CACHE_FLUSH_AND_INV_TS_EVENT,
+        (uint64_t)s_gpu.shadowBarrierLabel, GNM_DATA_SEL_SEND_DATA64, 1
+    );
+    gnmDrawCmdWaitMem(
+        &s_gpu.commandBuffer, GNM_WAIT_REG_MEM_FUNC_EQUAL,
+        (uint64_t)s_gpu.shadowBarrierLabel, 1, 0xffffffff
+    );
+    gnmDrawCmdWaitGraphicsWrite(
+        &s_gpu.commandBuffer, GNM_ACQUIRE_TARGET_CB0 | GNM_ACQUIRE_TARGET_DB
+    );
+}
+
 bool GpuRenderer_Init(void)
 {
     memset(&s_gpu, 0, sizeof(s_gpu));
@@ -143,6 +384,8 @@ bool GpuRenderer_Init(void)
     }
 
     pass_model_init(&s_gpu.memory, s_gpu.display.screenw, s_gpu.display.screenh);
+
+    if (!init_shadow_map()) return false;
 
     if (!LoadGltfModel(
             &s_gpu.model, "/app0/USRDIR/MODELS/NEXUS9_MENU.gltf",
@@ -244,10 +487,13 @@ bool GpuRenderer_Render(const uint32_t *rgbaOverlay, int frameId)
 
     gnmCmdReset(&s_gpu.commandBuffer);
     *s_gpu.gpuDoneLabel = 9;
+    *s_gpu.shadowBarrierLabel = 9;
 
     gnmDrawCmdWaitUntilSafeForRendering(
         &s_gpu.commandBuffer, s_gpu.display.videohandle, s_gpu.currentFrame
     );
+
+    draw_shadow_map();
 
     const float clearColor[4] = {0.018f, 0.024f, 0.028f, 1.0f};
     clearcolortarget(
