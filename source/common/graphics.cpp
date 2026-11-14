@@ -11,7 +11,49 @@
 
 Scene2D::~Scene2D()
 {
-    // Le système libère les ressources vidéo à la fermeture du processus.
+    if (overlayMode && frameBuffers) {
+        for (int i = 0; i < frameBufferCount; ++i)
+            free(frameBuffers[i]);
+        delete[] frameBuffers;
+        frameBuffers = NULL;
+    }
+    // Le systeme libere les ressources video classiques a la fermeture.
+}
+
+bool Scene2D::InitOverlay()
+{
+    if (width <= 0 || height <= 0 || depth != 4 || frameBufferSize == 0)
+        return false;
+    frameBuffers = new (std::nothrow) char*[2]();
+    if (!frameBuffers) return false;
+    for (int i = 0; i < 2; ++i) {
+        frameBuffers[i] = (char*)calloc(1, frameBufferSize);
+        if (!frameBuffers[i]) {
+            for (int j = 0; j < i; ++j) free(frameBuffers[j]);
+            delete[] frameBuffers;
+            frameBuffers = NULL;
+            return false;
+        }
+    }
+    frameBufferCount = 2;
+    activeFrameBufferIdx = 0;
+    overlayMode = true;
+    video = -1;
+    return true;
+}
+
+const uint32_t *Scene2D::GetPixels() const
+{
+    if (!frameBuffers || activeFrameBufferIdx < 0 ||
+        activeFrameBufferIdx >= frameBufferCount) return NULL;
+    return (const uint32_t*)frameBuffers[activeFrameBufferIdx];
+}
+
+void Scene2D::FrameBufferClearTransparent()
+{
+    if (overlayMode && frameBuffers && activeFrameBufferIdx >= 0 &&
+        activeFrameBufferIdx < frameBufferCount)
+        memset(frameBuffers[activeFrameBufferIdx], 0, frameBufferSize);
 }
 
 Scene2D::Scene2D(int w, int h, int pixelDepth)
@@ -29,6 +71,7 @@ Scene2D::Scene2D(int w, int h, int pixelDepth)
     this->frameBufferSize = 0;
     this->frameBufferCount = 0;
     this->activeFrameBufferIdx = 0;
+    this->overlayMode = false;
 
     if (w > 0 && h > 0 && pixelDepth > 0)
         this->frameBufferSize = (size_t)w * (size_t)h * (size_t)pixelDepth;
@@ -249,8 +292,8 @@ void Scene2D::DrawPixel(int x, int y, Color color)
         return;
 
     const size_t pixel = (size_t)y * (size_t)this->width + (size_t)x;
-    const uint32_t encodedColor = 0x80000000u |
-        ((uint32_t)color.r << 16) | ((uint32_t)color.g << 8) | (uint32_t)color.b;
+    const uint32_t encodedColor = 0xFF000000u |
+        ((uint32_t)color.b << 16) | ((uint32_t)color.g << 8) | (uint32_t)color.r;
 
     ((uint32_t *)this->frameBuffers[this->activeFrameBufferIdx])[pixel] = encodedColor;
 }
