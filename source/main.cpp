@@ -6,6 +6,7 @@
 #include <orbis/UserService.h>
 #include "common/graphics.h"
 #include "common/png.h"
+#include "common/video_player.h"
 
 static const int SCREEN_W = 1920;
 static const int SCREEN_H = 1080;
@@ -200,13 +201,19 @@ static void drawDiagnostics(Scene2D &scene)
 
 #endif
 
-static void render(Scene2D &scene, PNG &background, int frameId)
+static void render(Scene2D &scene, PNG &fallback,
+                   const uint32_t *videoPixels, int videoWidth, int videoHeight,
+                   int frameId)
 {
     scene.FrameBufferFill({0, 0, 0});
-    if (background.IsLoaded())
-        background.DrawScaled(&scene, 0, 0, SCREEN_W, SCREEN_H);
+    if (videoPixels && videoWidth > 0 && videoHeight > 0) {
+        scene.DrawARGBScaled(videoPixels, videoWidth, videoHeight,
+                             0, 0, SCREEN_W, SCREEN_H);
+    } else if (fallback.IsLoaded()) {
+        fallback.DrawScaled(&scene, 0, 0, SCREEN_W, SCREEN_H);
+    }
 
-    // Aucun panneau opaque : l'illustration d'origine reste visible sur tout l'écran.
+    // Les éléments du menu restent dessinés par-dessus le décor vidéo.
     if (page == PAGE_MAIN) drawMain(scene);
     else if (page == PAGE_NEW_GAME) drawNewGame(scene);
     else if (page == PAGE_CONTINUE) drawContinue(scene);
@@ -316,15 +323,16 @@ int main()
         for (;;) sceKernelUsleep(1000000);
     }
 
-    PNG background0("/app0/USRDIR/BLACKOUT_MENU_00.png");
-    PNG background1("/app0/USRDIR/BLACKOUT_MENU_01.png");
-    PNG background2("/app0/USRDIR/BLACKOUT_MENU_02.png");
-    PNG background3("/app0/USRDIR/BLACKOUT_MENU_03.png");
-    PNG background4("/app0/USRDIR/BLACKOUT_MENU_04.png");
-    PNG background5("/app0/USRDIR/BLACKOUT_MENU_05.png");
-    PNG *backgrounds[6] = {&background0, &background1, &background2, &background3, &background4, &background5};
-    if (!background0.IsLoaded())
-        write_status("BLACKOUT_MENU_ANIMATION_LOAD_FAILED");
+    PNG fallbackBackground("/app0/USRDIR/BLACKOUT_MENU.png");
+    VideoPlayer menuVideo;
+    const bool avPlayerReady = VideoPlayer::globalInit();
+    const bool menuVideoReady = avPlayerReady && menuVideo.open("/app0/USRDIR/BLACKOUT_MENU.mp4");
+    if (menuVideoReady)
+        write_status("BLACKOUT_MENU_MP4_READY");
+    else if (fallbackBackground.IsLoaded())
+        write_status("BLACKOUT_MENU_MP4_UNAVAILABLE_USING_STILL_FALLBACK");
+    else
+        write_status("BLACKOUT_MENU_VIDEO_AND_FALLBACK_LOAD_FAILED");
 
     // Initialisation et ouverture reprises du flux de controleur de PS MTP Explorer.
     const int padInit = scePadInit();
@@ -420,12 +428,12 @@ int main()
             }
         }
 
-        if (frameId == 0 || changed || (diagnosticTicks % 4) == 0) {
-            scene.SetActiveFrameBuffer(frameId % 2);
-            const int animationFrame = (frameId / 3) % 6;
-            render(scene, *backgrounds[animationFrame], frameId++);
-        }
-        sceKernelUsleep(16000);
+        // Pull decoded H.264 frames continuously; AvPlayer handles the MP4 loop.
+        menuVideo.update();
+        scene.SetActiveFrameBuffer(frameId % 2);
+        render(scene, fallbackBackground, menuVideo.pixels(),
+               menuVideo.width(), menuVideo.height(), frameId++);
+        sceKernelUsleep(12000);
     }
     return 0;
 }
