@@ -110,6 +110,8 @@ jobs:
           open(p, "w", encoding="utf-8").write(s.replace(old, new))
           PY
           python3 tools/opengnm-psbc/src/util/format/u_format_table.py --enums tools/opengnm-psbc/src/util/format/u_format.yaml > tools/opengnm-psbc/src/util/format/u_format_gen.h
+          python3 tools/opengnm-psbc/src/util/format/u_format_table.py --header tools/opengnm-psbc/src/util/format/u_format.yaml > tools/opengnm-psbc/src/util/format/u_format_pack.h
+          test -s tools/opengnm-psbc/src/util/format/u_format_pack.h
           python3 tools/opengnm-psbc/src/util/format/u_format_table.py tools/opengnm-psbc/src/util/format/u_format.yaml > tools/opengnm-psbc/src/util/format/u_format_gen.c
           test -s tools/opengnm-psbc/src/util/format/u_format_gen.h
           python3 tools/opengnm-psbc/src/compiler/builtin_types_h.py tools/opengnm-psbc/src/compiler/builtin_types.h
