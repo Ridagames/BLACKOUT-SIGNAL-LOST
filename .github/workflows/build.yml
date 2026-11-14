@@ -240,6 +240,7 @@ jobs:
           s = s.replace("/app0/assets/misc/gltf.vert.sb", "/app0/USRDIR/SHADERS/nexus9.vert.sb")
           s = s.replace("/app0/assets/misc/gltf.frag.sb", "/app0/USRDIR/SHADERS/nexus9.frag.sb")
           s = s.replace(".y = 0.5,", ".y = 1.65,")
+          s = s.replace(".z = 3.0,", ".z = 0.0,", 1)
           s = s.replace(".x = -30.0,", ".x = 0.0,")
           s = s.replace("s_mpass.cbufmem->c_mmodel = GLMS_MAT4_IDENTITY;", """s_mpass.cbufmem->c_mmodel = GLMS_MAT4_IDENTITY;
           const vec3s shadowLight = {{0.0, 4.0, 8.0}};
