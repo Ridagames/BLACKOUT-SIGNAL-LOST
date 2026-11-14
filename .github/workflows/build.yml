@@ -105,7 +105,7 @@ jobs:
               raise SystemExit("Python 3.8 compatibility patch target not found")
           open(p, "w", encoding="utf-8").write(s.replace(old, new))
           PY
-          python3 tools/opengnm-psbc/src/util/format/u_format_table.py --header tools/opengnm-psbc/src/util/format/u_format.yaml > tools/opengnm-psbc/src/util/format/u_format_gen.h
+          python3 tools/opengnm-psbc/src/util/format/u_format_table.py --enums tools/opengnm-psbc/src/util/format/u_format.yaml > tools/opengnm-psbc/src/util/format/u_format_gen.h
           python3 tools/opengnm-psbc/src/util/format/u_format_table.py tools/opengnm-psbc/src/util/format/u_format.yaml > tools/opengnm-psbc/src/util/format/u_format_gen.c
           test -s tools/opengnm-psbc/src/util/format/u_format_gen.h
           make -C tools/opengnm-psbc -j2
