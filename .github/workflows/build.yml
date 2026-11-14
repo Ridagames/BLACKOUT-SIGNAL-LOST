@@ -268,6 +268,13 @@ jobs:
           test -s /lib/OpenOrbisSDK/bin/data/modules/libSceFios2.prx
           echo "MODULES OPENORBIS OK"
 
+      - name: Verifier le convertisseur OBJ glTF avant le build
+        run: |
+          set -eu
+          python3 tools/obj_to_gltf.py assets/MODELS/NEXUS9_MENU.OBJ build/gpu-model-smoke
+          test -s build/gpu-model-smoke/NEXUS9_MENU.gltf
+          test -s build/gpu-model-smoke/NEXUS9_MENU.bin
+
       - name: Compiler et creer le PKG PS4
         run: |
           set -eu
