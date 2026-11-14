@@ -220,17 +220,17 @@ scene.render.image_settings.compression = 25
 base_camera = camera.location.copy()
 base_target = target.copy()
 lights = [obj for obj in scene.objects if obj.type == "LIGHT"]
-red_lights = [obj for obj in lights if obj.data.type == "POINT"]
+base_light_energies = [light.data.energy for light in lights]
 for frame in range(6):
     phase = (frame / 6.0) * math.tau
     camera.location = base_camera + Vector((0.045 * math.sin(phase), 0.025 * math.cos(phase), 0.018 * math.sin(phase*2.0)))
     look_target = base_target + Vector((0.025 * math.sin(phase), 0.0, 0.012 * math.cos(phase)))
     camera.rotation_euler = (look_target - camera.location).to_track_quat("-Z","Y").to_euler()
     for index, light in enumerate(lights):
-        pulse = 0.90 + 0.10 * math.sin(phase * 2.0 + index * 1.7)
+        pulse = 0.92 + 0.08 * math.sin(phase * 2.0 + index * 1.7)
         if index % 3 == frame % 3:
-            pulse *= 0.68
-        light.data.energy = max(8.0, light.data.energy * pulse)
+            pulse *= 0.76
+        light.data.energy = max(8.0, base_light_energies[index] * pulse)
     for haze in [obj for obj in scene.objects if obj.name == "Atmospheric haze volume"]:
         haze.location.x = 0.06 * math.sin(phase)
         haze.location.y = 8.0 + 0.10 * math.cos(phase)
