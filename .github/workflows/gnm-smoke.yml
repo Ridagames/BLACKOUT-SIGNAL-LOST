@@ -73,7 +73,7 @@ jobs:
           grep -Fq 'OpenOrbis SDK compatibility' src/driver_orbis.c
           make clean
           make hardware-smoke-pkg \
-            CC=clang LD=ld.lld AR=llvm-ar \
+            CC=clang LD=ld.lld AR=ar \
             OO_PS4_TOOLCHAIN="$OO_PS4_TOOLCHAIN" \
             CREATE_FSELF=/usr/local/bin/create-fself \
             CREATE_GP4=/usr/local/bin/create-gp4 \
