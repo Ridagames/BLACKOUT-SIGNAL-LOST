@@ -540,7 +540,17 @@ bool GpuRenderer_Render(const uint32_t *rgbaOverlay, int frameId)
         return false;
     }
 
-    while (*s_gpu.gpuDoneLabel != 1) sceKernelUsleep(100);
+    // Une fence GPU qui ne revient jamais ne doit pas figer le homebrew.
+    // 20 000 x 100 us = environ 2 secondes maximum avant le mode de secours.
+    int fenceWait = 0;
+    while (*s_gpu.gpuDoneLabel != 1 && fenceWait < 20000) {
+        sceKernelUsleep(100);
+        ++fenceWait;
+    }
+    if (*s_gpu.gpuDoneLabel != 1) {
+        gpu_status("GPU_FENCE_TIMEOUT");
+        return false;
+    }
 
     if (!displayctx_flip(&s_gpu.display, s_gpu.currentFrame)) {
         gpu_status("GPU_FLIP_FAILED");
