@@ -344,7 +344,7 @@ bool GpuRenderer_Init(void)
 {
     memset(&s_gpu, 0, sizeof(s_gpu));
     s_gpu.memory = memalloc_init(
-        64u * 1024u * 1024u,
+        96u * 1024u * 1024u,
         ORBIS_KERNEL_PROT_CPU_READ | ORBIS_KERNEL_PROT_CPU_RW |
             ORBIS_KERNEL_PROT_GPU_READ | ORBIS_KERNEL_PROT_GPU_WRITE,
         ORBIS_KERNEL_WC_GARLIC
