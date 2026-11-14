@@ -72,7 +72,7 @@ with open(SRC,encoding="utf-8",errors="ignore") as f:
                 vx,vy,vz=(c[i]-a[i] for i in range(3))
                 nx,ny,nz=(uy*vz-uz*vy,uz*vx-ux*vz,ux*vy-uy*vx)
                 ln=math.sqrt(nx*nx+ny*ny+nz*nz) or 1.0
-                normal=(nx/ln,ny/ln,nz/ln)
+                normal=(nx/ln,ny/ln,-nz/ln)
                 for idx in tri:
                     x,y,z=vertices[idx]
                     # corridor forward axis is converted to negative Z for the left-handed PS4 camera
