@@ -25,7 +25,7 @@ static float edge(float ax, float ay, float bx, float by, float px, float py)
 }
 
 ObjRenderer::ObjRenderer()
-    : m_width(640), m_height(360), m_loaded(false)
+    : m_width(1920), m_height(1080), m_loaded(false)
 {
     m_error[0] = 0;
     m_pixels.resize((size_t)m_width * m_height);
@@ -99,7 +99,7 @@ const uint32_t *ObjRenderer::Render(float timeSeconds)
     const float cameraY = 0.04f * std::sin(timeSeconds * 0.31f);
     const float yaw = 0.025f * std::sin(timeSeconds * 0.19f);
     const float cy = std::cos(yaw), sy = std::sin(yaw);
-    const float focal = 285.0f;
+    const float focal = 855.0f; // Projection adaptee au rendu natif 1920x1080.
     const float lightX = 0.25f, lightY = 0.82f, lightZ = -0.50f;
 
     struct Projected { float x, y, z; };
