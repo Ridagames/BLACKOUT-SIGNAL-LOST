@@ -128,19 +128,21 @@ jobs:
           check_file source/main.cpp
           check_file source/common/graphics.cpp
           check_file source/common/graphics.h
-          check_file source/common/obj_renderer.cpp
-          check_file source/common/obj_renderer.h
+          check_file source/common/gpu_renderer.c
+          check_file source/common/gpu_renderer.h
           check_file assets/MODELS/NEXUS9_MENU.OBJ
           check_file sce_sys/ICON0.PNG
-          grep -Fq 'ObjRenderer menuScene' source/main.cpp
-          grep -Fq 'NEXUS9_MENU.OBJ' source/main.cpp
-          grep -Fq 'OBJ_OBJ' Makefile
+          grep -Fq 'GpuRenderer_Init' source/main.cpp
+          grep -Fq 'NEXUS9_MENU.gltf' source/common/gpu_renderer.c
+          grep -Fq 'GPU_OBJS' Makefile
           grep -Fq 'USRDIR/MODELS/NEXUS9_MENU.OBJ' Makefile
           if grep -Eq 'BLACKOUT_MENU.mp4|SceAvPlayer|VideoPlayer' source/main.cpp Makefile; then
             echo "ANCIEN SYSTEME VIDEO ENCORE REFERENCE"
             exit 1
           fi
           grep -Fq 'OPENGNM_LIB' Makefile
+          grep -Fq 'pass_model_render' source/common/gpu_renderer.c
+          grep -Fq 'gnmDrawCmdSetPsShader' source/common/gpu_renderer.c
           grep -Fq 'SceGnmDriver' Makefile
           echo "VERIFICATIONS OBJ, MENU ET BASE GPU OPEN GNM OK"
 
@@ -171,6 +173,27 @@ jobs:
           tools/opengnm-psbc/opengnm-psbc -s fragment -f assets/SHADERS/nexus9.frag.spv -o assets/SHADERS/nexus9.frag.sb -4
           tools/opengnm-psbc/opengnm-psbc -s fragment -f assets/SHADERS/clear.frag.spv -o assets/SHADERS/clear.frag.sb -4
           tools/opengnm-psbc/opengnm-psbc -s fragment -f assets/SHADERS/nexus9_ui.frag.spv -o assets/SHADERS/nexus9_ui.frag.sb -4
+          python3 - <<'PY'
+          p = "tools/freegnm-examples/gltf/src/pass_model.c"
+          s = open(p, encoding="utf-8").read()
+          s = s.replace("/app0/assets/misc/gltf.vert.sb", "/app0/USRDIR/SHADERS/nexus9.vert.sb")
+          s = s.replace("/app0/assets/misc/gltf.frag.sb", "/app0/USRDIR/SHADERS/nexus9.frag.sb")
+          s = s.replace(".y = 0.5,", ".y = 1.65,")
+          s = s.replace(".x = -30.0,", ".x = 0.0,")
+          s = s.replace("s_mpass.rotation.y += 1.0;", "s_mpass.rotation.y = 0.0;")
+          s = s.replace(".position = (vec3s){{2.0, 2.0, 0.0}},", ".position = (vec3s){{0.0, 4.0, -8.0}},")
+          s = s.replace(".falloff = calcsquaredfalloffinv(2.5),", ".falloff = calcsquaredfalloffinv(12.0),")
+          s = s.replace(".color = (vec3s){{0.0, 0.85, 0.0}},", ".color = (vec3s){{0.95, 0.72, 0.48}},")
+          s = s.replace(".colorintensity = 1500.0,", ".colorintensity = 42.0,", 1)
+          s = s.replace(".position = (vec3s){{2.0, 2.0, 4.0}},", ".position = (vec3s){{0.0, 3.2, -22.0}},")
+          s = s.replace(".falloff = calcsquaredfalloffinv(5.0),", ".falloff = calcsquaredfalloffinv(10.0),")
+          s = s.replace(".color = (vec3s){{0.55, 0.0, 0.5}},", ".color = (vec3s){{0.55, 0.08, 0.06}},")
+          s = s.replace(".colorintensity = 1500.0,", ".colorintensity = 26.0,", 1)
+          open(p, "w", encoding="utf-8").write(s)
+          p = "tools/freegnm-examples/shared/src/misc.c"
+          s = open(p, encoding="utf-8").read().replace("/app0/assets/misc/clear.frag.sb", "/app0/USRDIR/SHADERS/clear.frag.sb")
+          open(p, "w", encoding="utf-8").write(s)
+          PY
           make V=1
           glslangValidator -V -S vert assets/SHADERS/nexus9.vert -o assets/SHADERS/nexus9.vert.spv
           glslangValidator -V -S frag assets/SHADERS/nexus9.frag -o assets/SHADERS/nexus9.frag.spv
