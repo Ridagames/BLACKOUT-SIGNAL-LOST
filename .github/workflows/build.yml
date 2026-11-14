@@ -96,6 +96,15 @@ jobs:
           CXXFLAGS=-std=c++17 -Wall -O2 -g $(SHARED_FLAGS) -Wno-unused-function -Wno-unused-variable -include strings.h
           LDFLAGS=-lm -pthread
           EOF
+          python3 - <<'PY'
+          p = "tools/opengnm-psbc/src/compiler/nir/nir_algebraic.py"
+          s = open(p, encoding="utf-8").read()
+          old = "m.group(\n                'swizzle').removeprefix('.')"
+          new = "(m.group('swizzle')[1:] if m.group('swizzle').startswith('.') else m.group('swizzle'))"
+          if old not in s:
+              raise SystemExit("Python 3.8 compatibility patch target not found")
+          open(p, "w", encoding="utf-8").write(s.replace(old, new))
+          PY
           make -C tools/opengnm-psbc -j2
           test -x tools/opengnm-psbc/opengnm-psbc
           tools/opengnm-psbc/opengnm-psbc --help
