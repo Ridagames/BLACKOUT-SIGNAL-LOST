@@ -30,15 +30,37 @@ jobs:
           set -eu
           export OO_PS4_TOOLCHAIN=/lib/OpenOrbisSDK
           cp tools/opengnm/config.orbis.mak tools/opengnm/config.mak
+          sed -i 's/-std=c11/-D_BSD_SOURCE -std=c11/' tools/opengnm/config.mak
           make -C tools/opengnm lib CC=clang AR=llvm-ar
           test -s tools/opengnm/libopengnm.a
           echo "OpenGNM PS4 STATIC LIBRARY READY"
+
+      - name: Recuperer le compilateur de shaders PS4
+        uses: actions/checkout@v4
+        with:
+          repository: PS4-OpenGNM/opengnm-psbc
+          ref: 28697f007862427ebec54388ec972ce6e3545912
+          path: tools/opengnm-psbc
+
+      - name: Installer les outils de compilation GLSL et SPIR-V
+        run: |
+          set -eu
+          apt-get update
+          apt-get install -y imagemagick glslc python3-mako
+          glslc --version
+          python3 -c "import mako; print('Mako ready')"
+
+      - name: Compiler le compilateur de shaders PS4
+        run: |
+          set -eu
+          make -C tools/opengnm-psbc -j2
+          test -x tools/opengnm-psbc/opengnm-psbc
+          tools/opengnm-psbc/opengnm-psbc --help
 
       - name: Installer ImageMagick
         run: |
           set -eu
           apt-get update
-          apt-get install -y imagemagick
           convert -version
 
       - name: Recuperer create-fself officiel
@@ -82,6 +104,9 @@ jobs:
           check_file() { test -s "$1" || { echo "FICHIER MANQUANT: $1"; exit 1; }; }
           check_file Makefile
           check_file tools/opengnm/libopengnm.a
+          check_file tools/opengnm-psbc/opengnm-psbc
+          check_file assets/SHADERS/nexus9.vert
+          check_file assets/SHADERS/nexus9.frag
           check_file source/main.cpp
           check_file source/common/graphics.cpp
           check_file source/common/graphics.h
@@ -98,6 +123,7 @@ jobs:
             exit 1
           fi
           grep -Fq 'OPENGNM_LIB' Makefile
+          grep -Fq 'SceGnmDriver' Makefile
           echo "VERIFICATIONS OBJ, MENU ET BASE GPU OPEN GNM OK"
 
       - name: Verifier OpenOrbis et les modules PRX
@@ -119,6 +145,12 @@ jobs:
           export PATH="$OO_PS4_TOOLCHAIN/bin/linux:$OO_PS4_TOOLCHAIN:/usr/local/bin:$PATH"
           make clean
           make V=1
+          glslc -fshader-stage=vertex assets/SHADERS/nexus9.vert -o assets/SHADERS/nexus9.vert.spv
+          glslc -fshader-stage=fragment assets/SHADERS/nexus9.frag -o assets/SHADERS/nexus9.frag.spv
+          tools/opengnm-psbc/opengnm-psbc -s vertex -f assets/SHADERS/nexus9.vert.spv -o assets/SHADERS/nexus9.vert.sb -4
+          tools/opengnm-psbc/opengnm-psbc -s fragment -f assets/SHADERS/nexus9.frag.spv -o assets/SHADERS/nexus9.frag.sb -4
+          test -s assets/SHADERS/nexus9.vert.sb
+          test -s assets/SHADERS/nexus9.frag.sb
           test -s source/x64/Debug/blackout.elf
           test -s source/x64/Debug/blackout.oelf
           test -s eboot.bin
