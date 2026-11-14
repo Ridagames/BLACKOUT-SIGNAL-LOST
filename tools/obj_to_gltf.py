@@ -47,39 +47,60 @@ mat_props = {
  "light":(0.05,0.3),"glass":(0.65,0.16),"bio":(0.02,0.86)
 }
 vertices=[]
+faces=[]
 groups=defaultdict(list)
 active="wall"
 with open(SRC,encoding="utf-8",errors="ignore") as f:
-    for line in f:
+    for line_number,line in enumerate(f,1):
         if line.startswith("v "):
             p=line.split()
-            vertices.append(tuple(map(float,p[1:4])))
+            if len(p) >= 4:
+                vertices.append(tuple(map(float,p[1:4])))
         elif line.startswith("usemtl "):
             active=line.split(None,1)[1].strip().lower()
             if active not in materials:
                 active="metal"
         elif line.startswith("f "):
-            refs=line.split()[1:]
-            ids=[]
-            for ref in refs:
-                raw=ref.split("/")[0]
-                idx=int(raw)
-                ids.append(idx-1 if idx>0 else len(vertices)+idx)
-            for k in range(1,len(ids)-1):
-                tri=(ids[0],ids[k],ids[k+1])
-                a,b,c=(vertices[i] for i in tri)
-                ux,uy,uz=(b[i]-a[i] for i in range(3))
-                vx,vy,vz=(c[i]-a[i] for i in range(3))
-                nx,ny,nz=(uy*vz-uz*vy,uz*vx-ux*vz,ux*vy-uy*vx)
-                ln=math.sqrt(nx*nx+ny*ny+nz*nz) or 1.0
-                normal=(nx/ln,ny/ln,nz/ln)
-                for idx in tri:
-                    x,y,z=vertices[idx]
-                    # Preserve the OBJ +Z corridor axis and the original renderer's +5m depth offset.
-                    pos=(x,y,z+5.0)
-                    uv=(x*0.22,z*0.22)
-                    metal,rough=mat_props[active]
-                    groups[active].append((pos,normal,uv,(metal,rough)))
+            # Keep faces until the complete vertex table is known. This OBJ contains
+            # forward vertex references in several generated mesh sections.
+            faces.append((line_number, line.split()[1:], active, len(vertices)))
+
+invalid_faces=0
+for line_number,refs,material,vertex_count_at_face in faces:
+    ids=[]
+    try:
+        for ref in refs:
+            raw=ref.split("/")[0]
+            if not raw:
+                raise ValueError("missing vertex index")
+            idx=int(raw)
+            # Positive OBJ indices are absolute; negative indices are relative
+            # to the vertex table as it existed when the face was declared.
+            resolved=idx-1 if idx>0 else vertex_count_at_face+idx
+            if resolved < 0 or resolved >= len(vertices):
+                raise IndexError("vertex index outside complete OBJ vertex table")
+            ids.append(resolved)
+    except (ValueError, IndexError):
+        invalid_faces += 1
+        continue
+    if len(ids) < 3:
+        invalid_faces += 1
+        continue
+    for k in range(1,len(ids)-1):
+        tri=(ids[0],ids[k],ids[k+1])
+        a,b,c=(vertices[i] for i in tri)
+        ux,uy,uz=(b[i]-a[i] for i in range(3))
+        vx,vy,vz=(c[i]-a[i] for i in range(3))
+        nx,ny,nz=(uy*vz-uz*vy,uz*vx-ux*vz,ux*vy-uy*vx)
+        ln=math.sqrt(nx*nx+ny*ny+nz*nz) or 1.0
+        normal=(nx/ln,ny/ln,nz/ln)
+        for idx in tri:
+            x,y,z=vertices[idx]
+            # Preserve the OBJ +Z corridor axis and the original renderer's +5m depth offset.
+            pos=(x,y,z+5.0)
+            uv=(x*0.22,z*0.22)
+            metal,rough=mat_props[material]
+            groups[material].append((pos,normal,uv,(metal,rough)))
 
 blob=bytearray()
 buffer_views=[]
@@ -140,4 +161,4 @@ gltf={
 }
 with open(os.path.join(OUT,"NEXUS9_MENU.gltf"),"w",encoding="utf-8") as f: json.dump(gltf,f,separators=(",",":"))
 with open(os.path.join(OUT,"NEXUS9_MENU.bin"),"wb") as f: f.write(blob)
-print("GLTF_READY materials=%d primitives=%d vertices=%d bytes=%d" % (len(materials),len(primitives),sum(len(v)//3 for v in groups.values()),len(blob)))
+print("GLTF_READY materials=%d primitives=%d vertices=%d skipped_faces=%d bytes=%d" % (len(materials),len(primitives),sum(len(v)//3 for v in groups.values()),invalid_faces,len(blob)))
