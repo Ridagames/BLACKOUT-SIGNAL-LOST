@@ -69,20 +69,8 @@ jobs:
           export OO_PS4_TOOLCHAIN=/lib/OpenOrbisSDK
           cp config.orbis.mak config.mak
           printf '\nCFLAGS += -D_BSD_SOURCE -D_DEFAULT_SOURCE\n' >> config.mak
-          python3 - <<'PY'
-          from pathlib import Path
-          path = Path("src/driver_orbis.c")
-          source = path.read_text()
-          expected = "#if __has_include(<orbis/libkernel.h>)"
-          if expected not in source:
-              raise SystemExit("OpenGNM compatibility patch target not found")
-          source = source.replace(
-              expected,
-              "#if 0 /* OpenOrbis SDK image exposes incompatible void module-query prototypes; retail hardware uses the non-HLE path. */",
-              1,
-          )
-          path.write_text(source)
-          PY
+          sed -i 's|#if __has_include(<orbis/libkernel.h>)|#if 0 /* OpenOrbis SDK compatibility: use the retail-hardware path */|' src/driver_orbis.c
+          grep -Fq 'OpenOrbis SDK compatibility' src/driver_orbis.c
           make clean
           make hardware-smoke-pkg \
             CC=clang LD=ld.lld AR=llvm-ar \
