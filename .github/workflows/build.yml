@@ -30,7 +30,8 @@ jobs:
           set -eu
           export OO_PS4_TOOLCHAIN=/lib/OpenOrbisSDK
           cp tools/opengnm/config.orbis.mak tools/opengnm/config.mak
-          sed -i 's/-std=c11/-D_BSD_SOURCE -std=c11/' tools/opengnm/config.mak
+          sed -i 's/-std=c11/-D_BSD_SOURCE -DOPENGNM_NO_MODULE_ENUM -std=c11/' tools/opengnm/config.mak
+          sed -i 's/#if __has_include(<orbis\/libkernel.h>)/#if __has_include(<orbis\/libkernel.h>) \&\& !defined(OPENGNM_NO_MODULE_ENUM)/' tools/opengnm/src/driver_orbis.c
           make -C tools/opengnm lib CC=clang AR=llvm-ar
           test -s tools/opengnm/libopengnm.a
           echo "OpenGNM PS4 STATIC LIBRARY READY"
