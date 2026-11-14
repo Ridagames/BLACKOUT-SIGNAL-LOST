@@ -8,7 +8,8 @@
 #include <orbis/libkernel.h>
 #include <compat/freegnm.h>
 #include <gnm/drawcommandbuffer.h>
-#include <gnm/gnmdriver.h>
+#include <gnmdriver.h>
+#include <gnm/shader.h>
 #include <gnm/platform.h>
 #include <gnm/sampler.h>
 #include <gnm/texture.h>
@@ -90,7 +91,7 @@ static bool init_ui_texture(void)
     s_gpu.uiSampler = (GnmSampler){
         .xyminfilter = GNM_FILTER_BILINEAR,
         .xymagfilter = GNM_FILTER_BILINEAR,
-        .mipfilter = GNM_MIPFILTER_NONE,
+        .mipfilter = GNM_MIPFILTER_LINEAR,
         .zfilter = GNM_ZFILTER_POINT,
         .minlod = 0,
         .maxlod = 0,
