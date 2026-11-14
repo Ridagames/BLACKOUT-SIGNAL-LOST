@@ -161,6 +161,7 @@ static void drawIntro(Scene2D &scene)
     drawText(scene, "ROND  RETOUR AU MENU", 116, 970, 2, {205, 205, 194});
 }
 
+#if DIAGNOSTIC_BUILD
 static void drawDiagnostics(Scene2D &scene)
 {
     char line[96];
@@ -197,6 +198,8 @@ static void drawDiagnostics(Scene2D &scene)
     drawText(scene, line, 1400, 270, 2, diagnosticConnected ? green : red);
 }
 
+#endif
+
 static void render(Scene2D &scene, PNG &background, int frameId)
 {
     scene.FrameBufferFill({0, 0, 0});
@@ -210,7 +213,9 @@ static void render(Scene2D &scene, PNG &background, int frameId)
     else if (page == PAGE_OPTIONS) drawOptions(scene);
     else drawIntro(scene);
 
+    #if DIAGNOSTIC_BUILD
     drawDiagnostics(scene);
+    #endif
     scene.SubmitFlip(frameId);
     scene.FrameWait(frameId);
 }
