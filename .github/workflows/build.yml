@@ -117,6 +117,8 @@ jobs:
           python3 tools/opengnm-psbc/src/util/process_shader_stats.py tools/opengnm-psbc/src/util/shader_stats.rnc tools/opengnm-psbc/src/util/shader_stats.xml > tools/opengnm-psbc/src/util/shader_stats.h
           test -s tools/opengnm-psbc/src/compiler/builtin_types.h
           test -s tools/opengnm-psbc/src/util/shader_stats.h
+          python3 tools/opengnm-psbc/src/vulkan/util/vk_struct_type_cast_gen.py --xml tools/Vulkan-Headers/registry/vk.xml --out tools/opengnm-psbc/src/vulkan/util/vk_struct_type_cast.h --beta false
+          test -s tools/opengnm-psbc/src/vulkan/util/vk_struct_type_cast.h
           make -C tools/opengnm-psbc -j2
           test -x tools/opengnm-psbc/opengnm-psbc
           tools/opengnm-psbc/opengnm-psbc --help
