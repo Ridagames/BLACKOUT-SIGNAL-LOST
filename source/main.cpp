@@ -422,7 +422,7 @@ int main()
 
         if (frameId == 0 || changed || (diagnosticTicks % 4) == 0) {
             scene.SetActiveFrameBuffer(frameId % 2);
-            const int animationFrame = (frameId / 8) % 6;
+            const int animationFrame = (frameId / 3) % 6;
             render(scene, *backgrounds[animationFrame], frameId++);
         }
         sceKernelUsleep(16000);
