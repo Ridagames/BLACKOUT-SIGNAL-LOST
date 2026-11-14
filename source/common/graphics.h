@@ -66,6 +66,8 @@ public:
 
     void DrawPixel(int x, int y, Color color);
     void DrawRectangle(int x, int y, int w, int h, Color color);
+    void DrawARGBScaled(const uint32_t *pixels, int srcWidth, int srcHeight,
+                        int x, int y, int drawWidth, int drawHeight);
 
 #ifdef GRAPHICS_USES_FONT
     bool InitFont(FT_Face *face, const char *fontPath, int fontSize);
