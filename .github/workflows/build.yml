@@ -119,6 +119,10 @@ jobs:
           test -s tools/opengnm-psbc/src/util/shader_stats.h
           python3 tools/opengnm-psbc/src/vulkan/util/vk_struct_type_cast_gen.py --xml tools/Vulkan-Headers/registry/vk.xml --out tools/opengnm-psbc/src/vulkan/util/vk_struct_type_cast.h --beta false
           test -s tools/opengnm-psbc/src/vulkan/util/vk_struct_type_cast.h
+          python3 tools/opengnm-psbc/src/amd/packets/parse_cp_pm4_table_data_json.py tools/opengnm-psbc/src/amd/packets/cp_pm4_table_data_gfx11.json tools/opengnm-psbc/src/amd/packets/pm4_it_opcodes_gfx11.h tools/opengnm-psbc/src/amd/packets/cp_pm4_table_data_gfx12.json tools/opengnm-psbc/src/amd/packets/pm4_it_opcodes_gfx12.h gfx11 packets_h > tools/opengnm-psbc/src/amd/common/amd_cp_packets_gfx11.h
+          python3 tools/opengnm-psbc/src/amd/packets/parse_cp_pm4_table_data_json.py tools/opengnm-psbc/src/amd/packets/cp_pm4_table_data_gfx11.json tools/opengnm-psbc/src/amd/packets/pm4_it_opcodes_gfx11.h tools/opengnm-psbc/src/amd/packets/cp_pm4_table_data_gfx12.json tools/opengnm-psbc/src/amd/packets/pm4_it_opcodes_gfx12.h gfx12 packets_h > tools/opengnm-psbc/src/amd/common/amd_cp_packets_gfx12.h
+          test -s tools/opengnm-psbc/src/amd/common/amd_cp_packets_gfx11.h
+          test -s tools/opengnm-psbc/src/amd/common/amd_cp_packets_gfx12.h
           make -C tools/opengnm-psbc -j2
           test -x tools/opengnm-psbc/opengnm-psbc
           tools/opengnm-psbc/opengnm-psbc --help
