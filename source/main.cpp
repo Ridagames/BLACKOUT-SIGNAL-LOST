@@ -175,6 +175,7 @@ static void render(Scene2D &scene, PNG &background, int frameId)
 static unsigned int pollPressed(int pad, OrbisPadData &state)
 {
     std::memset(&state, 0, sizeof(state));
+
     if (pad < 0) {
         lastPadReadResult = -1;
         lastPadButtons = 0;
@@ -182,51 +183,26 @@ static unsigned int pollPressed(int pad, OrbisPadData &state)
         return 0;
     }
 
-    // Lecture principale : scePadRead retourne l'etat complet du DualShock,
-    // boutons ET sticks. Certaines versions du firmware gerent moins bien
-    // scePadReadState : on ne l'utilise qu'en secours.
-    lastPadReadResult = scePadRead(pad, &state, 1);
+    // Methode utilisee par des homebrews PS4 fonctionnels comme Moonlight:
+    // lire directement l'etat des boutons avec scePadReadState.
+    // Ne pas melanger scePadRead et scePadReadState dans la boucle du menu.
+    lastPadReadResult = scePadReadState(pad, &state);
     if (lastPadReadResult != 0) {
-        OrbisPadData buttonState = {};
-        const int fallbackResult = scePadReadState(pad, &buttonState);
-        if (fallbackResult == 0) {
-            state.buttons = buttonState.buttons;
-            state.connected = buttonState.connected;
-            lastPadReadResult = 0;
-        } else {
-            lastPadButtons = 0;
-            previousButtons = 0;
-            return 0;
-        }
+        lastPadButtons = 0;
+        previousButtons = 0;
+        return 0;
     }
 
     const unsigned int menuMask =
         ORBIS_PAD_BUTTON_UP | ORBIS_PAD_BUTTON_DOWN |
         ORBIS_PAD_BUTTON_LEFT | ORBIS_PAD_BUTTON_RIGHT |
         ORBIS_PAD_BUTTON_CROSS | ORBIS_PAD_BUTTON_CIRCLE;
+
     const unsigned int current = state.buttons & menuMask;
-    unsigned int pressed = current & ~previousButtons;
+    const unsigned int pressed = current & ~previousButtons;
     previousButtons = current;
     lastPadButtons = (int)state.buttons;
 
-    // Secours analogique : les sticks PS4 sont centres autour de 128.
-    // Une zone morte evite les mouvements fantomes au repos.
-    if (pressed == 0) {
-        const int y = (int)state.leftStick.y - 128;
-        const int x = (int)state.leftStick.x - 128;
-        if (y < -48) {
-            if (stickRepeat == 0) { pressed |= ORBIS_PAD_BUTTON_UP; stickRepeat = 9; }
-        } else if (y > 48) {
-            if (stickRepeat == 0) { pressed |= ORBIS_PAD_BUTTON_DOWN; stickRepeat = 9; }
-        } else if (x < -48) {
-            if (stickRepeat == 0) { pressed |= ORBIS_PAD_BUTTON_LEFT; stickRepeat = 9; }
-        } else if (x > 48) {
-            if (stickRepeat == 0) { pressed |= ORBIS_PAD_BUTTON_RIGHT; stickRepeat = 9; }
-        } else {
-            stickRepeat = 0;
-        }
-    }
-    if (stickRepeat > 0) --stickRepeat;
     return pressed;
 }
 
@@ -278,7 +254,7 @@ int main()
     } else {
         write_status("BLACKOUT_PAD_CONNECTED");
         OrbisPadData initial = {};
-        if (scePadRead(pad, &initial, 1) == 0)
+        if (scePadReadState(pad, &initial) == 0)
             previousButtons = initial.buttons & (ORBIS_PAD_BUTTON_UP | ORBIS_PAD_BUTTON_DOWN |
                 ORBIS_PAD_BUTTON_LEFT | ORBIS_PAD_BUTTON_RIGHT |
                 ORBIS_PAD_BUTTON_CROSS | ORBIS_PAD_BUTTON_CIRCLE);
