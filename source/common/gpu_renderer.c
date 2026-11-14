@@ -523,7 +523,7 @@ bool GpuRenderer_Render(const uint32_t *rgbaOverlay, int frameId)
     draw_menu_overlay();
 
     gnmDrawCmdEventWriteEop(
-        &s_gpu.commandBuffer, GNM_CACHE_FLUSH_TS,
+        &s_gpu.commandBuffer, GNM_CACHE_FLUSH_AND_INV_TS_EVENT,
         (uint64_t)s_gpu.gpuDoneLabel, GNM_DATA_SEL_SEND_DATA64, 1
     );
 
