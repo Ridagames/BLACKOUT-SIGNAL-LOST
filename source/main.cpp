@@ -20,6 +20,10 @@ static int lastPadReadResult = -999;
 static int lastPadButtons = 0;
 static int lastPadHandle = -1;
 static int stickRepeat = 0;
+static int diagnosticPadInit = -999;
+static int diagnosticUserResult = -999;
+static int diagnosticActiveUser = -1;
+static unsigned int diagnosticConnected = 0;
 
 static void write_status(const char *message)
 {
@@ -155,6 +159,36 @@ static void drawIntro(Scene2D &scene)
     drawText(scene, "ROND  RETOUR AU MENU", 116, 970, 2, {205, 205, 194});
 }
 
+static void drawDiagnostics(Scene2D &scene)
+{
+    char line[96];
+    const Color white = {225, 228, 220};
+    const Color red = {230, 105, 78};
+    const Color green = {120, 210, 145};
+
+    scene.DrawRectangle(1380, 35, 500, 230, {8, 12, 14});
+    scene.DrawRectangle(1380, 35, 4, 230, {218, 75, 54});
+    drawText(scene, "PAD DIAGNOSTIC", 1400, 52, 2, white);
+
+    std::snprintf(line, sizeof(line), "PAD INIT %d", diagnosticPadInit);
+    drawText(scene, line, 1400, 88, 2, diagnosticPadInit == 0 ? green : red);
+
+    std::snprintf(line, sizeof(line), "USER RESULT %d", diagnosticUserResult);
+    drawText(scene, line, 1400, 118, 2, diagnosticUserResult == 0 ? green : red);
+
+    std::snprintf(line, sizeof(line), "USER ID %d", diagnosticActiveUser);
+    drawText(scene, line, 1400, 148, 2, white);
+
+    std::snprintf(line, sizeof(line), "PAD HANDLE %d", lastPadHandle);
+    drawText(scene, line, 1400, 178, 2, lastPadHandle >= 0 ? green : red);
+
+    std::snprintf(line, sizeof(line), "READ %d", lastPadReadResult);
+    drawText(scene, line, 1400, 208, 2, lastPadReadResult == 0 ? green : red);
+
+    std::snprintf(line, sizeof(line), "BUTTONS %08X", (unsigned int)lastPadButtons);
+    drawText(scene, line, 1400, 238, 2, white);
+}
+
 static void render(Scene2D &scene, PNG &background, int frameId)
 {
     scene.FrameBufferFill({0, 0, 0});
@@ -168,6 +202,7 @@ static void render(Scene2D &scene, PNG &background, int frameId)
     else if (page == PAGE_OPTIONS) drawOptions(scene);
     else drawIntro(scene);
 
+    drawDiagnostics(scene);
     scene.SubmitFlip(frameId);
     scene.FrameWait(frameId);
 }
@@ -237,6 +272,9 @@ int main()
     int pad = -1;
     int activeUser = -1;
     const int userResult = sceUserServiceGetInitialUser(&activeUser);
+    diagnosticPadInit = padInit;
+    diagnosticUserResult = userResult;
+    diagnosticActiveUser = activeUser;
     if (padInit == 0 && userResult == 0) {
         pad = scePadOpen(activeUser, ORBIS_PAD_PORT_TYPE_STANDARD, 0, NULL);
         // Si le handle est deja ouvert par le systeme, recuperer le handle existant.
@@ -272,6 +310,8 @@ int main()
                 lastPadHandle, lastPadReadResult, lastPadButtons,
                 (unsigned)state.connected);
             write_status(message);
+        }
+        diagnosticConnected = (unsigned)state.connected;
         }
         bool changed = false;
 
@@ -318,7 +358,7 @@ int main()
             }
         }
 
-        if (frameId == 0 || changed) {
+        if (frameId == 0 || changed || (diagnosticTicks % 15) == 0) {
             scene.SetActiveFrameBuffer(frameId % 2);
             render(scene, background, frameId++);
         }
