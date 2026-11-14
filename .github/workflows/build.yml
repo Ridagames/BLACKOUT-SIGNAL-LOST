@@ -47,6 +47,42 @@ jobs:
           ref: ffd055563e5b849ebef1b276ba29e730199670f8
           path: tools/freegnm-examples
 
+      - name: Recuperer cglm pour les matrices 3D
+        uses: actions/checkout@v4
+        with:
+          repository: recp/cglm
+          ref: b9b570b78d58ceecc704f7a4e19b84dc45937ef4
+          path: tools/cglm
+
+      - name: Recuperer SPIRV-Headers pour le compilateur PS4
+        uses: actions/checkout@v4
+        with:
+          repository: KhronosGroup/SPIRV-Headers
+          ref: 5c6004e758e0c80185ef2cee93ae5c10fa342a5b
+          path: tools/SPIRV-Headers
+
+      - name: Recuperer Vulkan-Headers pour Mesa ACO
+        uses: actions/checkout@v4
+        with:
+          repository: KhronosGroup/Vulkan-Headers
+          ref: b26454f3ccd67e704117a39295fa13935fd3804c
+          path: tools/Vulkan-Headers
+
+      - name: Recuperer le compilateur de shaders PS4
+        uses: actions/checkout@v4
+        with:
+          repository: PS4-OpenGNM/opengnm-psbc
+          ref: 28697f007862427ebec54388ec972ce6e3545912
+          path: tools/opengnm-psbc
+
+      - name: Installer les outils de compilation GLSL et SPIR-V
+        run: |
+          set -eu
+          apt-get update
+          apt-get install -y imagemagick glslang-tools python3-mako python3-yaml
+          glslangValidator --version
+          python3 -c "import mako; print('Mako ready')"
+
       - name: Securiser la synchronisation VideoOut
         run: |
           set -eu
@@ -106,42 +142,6 @@ jobs:
           grep -Fq 'OrbisKernelUseconds timeout = 1000000' tools/freegnm-examples/shared/src/displayctx.c
           grep -Fq '&timeout' tools/freegnm-examples/shared/src/displayctx.c
           echo "VIDEOOUT FLIP TIMEOUT + EVENT REGISTRATION CHECKS OK"
-
-      - name: Recuperer cglm pour les matrices 3D
-        uses: actions/checkout@v4
-        with:
-          repository: recp/cglm
-          ref: b9b570b78d58ceecc704f7a4e19b84dc45937ef4
-          path: tools/cglm
-
-      - name: Recuperer SPIRV-Headers pour le compilateur PS4
-        uses: actions/checkout@v4
-        with:
-          repository: KhronosGroup/SPIRV-Headers
-          ref: 5c6004e758e0c80185ef2cee93ae5c10fa342a5b
-          path: tools/SPIRV-Headers
-
-      - name: Recuperer Vulkan-Headers pour Mesa ACO
-        uses: actions/checkout@v4
-        with:
-          repository: KhronosGroup/Vulkan-Headers
-          ref: b26454f3ccd67e704117a39295fa13935fd3804c
-          path: tools/Vulkan-Headers
-
-      - name: Recuperer le compilateur de shaders PS4
-        uses: actions/checkout@v4
-        with:
-          repository: PS4-OpenGNM/opengnm-psbc
-          ref: 28697f007862427ebec54388ec972ce6e3545912
-          path: tools/opengnm-psbc
-
-      - name: Installer les outils de compilation GLSL et SPIR-V
-        run: |
-          set -eu
-          apt-get update
-          apt-get install -y imagemagick glslang-tools python3-mako python3-yaml
-          glslangValidator --version
-          python3 -c "import mako; print('Mako ready')"
 
       - name: Compiler le compilateur de shaders PS4
         run: |
