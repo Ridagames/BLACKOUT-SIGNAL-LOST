@@ -29,9 +29,9 @@ OBJS := $(patsubst $(PROJDIR)/%.c,$(INTDIR)/%.o,$(CFILES)) \
         $(GRAPHICS_OBJ) \
         $(OBJ_OBJ)
 
-CFLAGS := --target=x86_64-pc-freebsd12-elf -fPIC -funwind-tables -c $(EXTRAFLAGS) -isysroot $(TOOLCHAIN) -isystem $(TOOLCHAIN)/include
+CFLAGS := -Itools/opengnm/include --target=x86_64-pc-freebsd12-elf -fPIC -funwind-tables -c $(EXTRAFLAGS) -isysroot $(TOOLCHAIN) -isystem $(TOOLCHAIN)/include
 CXXFLAGS := $(CFLAGS) -isystem $(TOOLCHAIN)/include/c++/v1 -DDIAGNOSTIC_BUILD=$(DIAGNOSTIC_BUILD)
-LDFLAGS := -m elf_x86_64 -pie --script $(TOOLCHAIN)/link.x --eh-frame-hdr -L$(TOOLCHAIN)/lib $(LIBS) $(TOOLCHAIN)/lib/crt1.o
+LDFLAGS := $(OPENGNM_LIB) -m elf_x86_64 -pie --script $(TOOLCHAIN)/link.x --eh-frame-hdr -L$(TOOLCHAIN)/lib $(LIBS) $(TOOLCHAIN)/lib/crt1.o
 
 UNAME_S := $(shell uname -s)
 ifeq ($(UNAME_S),Linux)
