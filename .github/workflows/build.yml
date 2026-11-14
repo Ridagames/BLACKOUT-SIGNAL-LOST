@@ -25,7 +25,7 @@ jobs:
           path: |
             assets/USRDIR/BLACKOUT_MENU.mp4
             assets/USRDIR/BLACKOUT_MENU.png
-          key: blackout-menu-\${{ runner.os }}-\${{ hashFiles('tools/blender/create_blackout_menu.py') }}
+          key: blackout-menu-${{ runner.os }}-${{ hashFiles('tools/blender/create_blackout_menu.py') }}
 
       - name: Installer les outils d'image
         run: |
