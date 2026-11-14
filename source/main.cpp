@@ -223,17 +223,16 @@ static unsigned int pollPressed(int pad, OrbisPadData &state)
         lastPadReadResult = -1;
         lastPadButtons = 0;
         previousButtons = 0;
+        stickRepeat = 0;
         return 0;
     }
 
-    // Methode utilisee par des homebrews PS4 fonctionnels comme Moonlight:
-    // lire directement l'etat des boutons avec scePadReadState.
-    // Ne pas melanger scePadRead et scePadReadState dans la boucle du menu.
+    // Lecture unique de l'etat complet de la DualShock 4.
     lastPadReadResult = scePadReadState(pad, &state);
-    // Comme PS MTP Explorer : les codes >= 0 ne sont pas des erreurs.
     if (lastPadReadResult < 0) {
         lastPadButtons = 0;
         previousButtons = 0;
+        stickRepeat = 0;
         diagnosticConnected = 0;
         return 0;
     }
@@ -241,19 +240,51 @@ static unsigned int pollPressed(int pad, OrbisPadData &state)
     if (!state.connected) {
         lastPadButtons = 0;
         previousButtons = 0;
+        stickRepeat = 0;
         return 0;
     }
 
-    const unsigned int menuMask =
+    const unsigned int directionMask =
         ORBIS_PAD_BUTTON_UP | ORBIS_PAD_BUTTON_DOWN |
-        ORBIS_PAD_BUTTON_LEFT | ORBIS_PAD_BUTTON_RIGHT |
+        ORBIS_PAD_BUTTON_LEFT | ORBIS_PAD_BUTTON_RIGHT;
+    const unsigned int menuMask = directionMask |
         ORBIS_PAD_BUTTON_CROSS | ORBIS_PAD_BUTTON_CIRCLE;
 
-    const unsigned int current = state.buttons & menuMask;
-    const unsigned int pressed = current & ~previousButtons;
+    // Les sticks PS4 renvoient des valeurs de 0 a 255, centre a 128.
+    // Zone morte volontaire pour eviter les mouvements parasites.
+    const int deadZoneLow = 64;
+    const int deadZoneHigh = 192;
+    unsigned int current = state.buttons & menuMask;
+
+    // Stick gauche ET stick droit peuvent naviguer dans les menus.
+    if (state.leftStick.y < deadZoneLow || state.rightStick.y < deadZoneLow)
+        current |= ORBIS_PAD_BUTTON_UP;
+    if (state.leftStick.y > deadZoneHigh || state.rightStick.y > deadZoneHigh)
+        current |= ORBIS_PAD_BUTTON_DOWN;
+    if (state.leftStick.x < deadZoneLow || state.rightStick.x < deadZoneLow)
+        current |= ORBIS_PAD_BUTTON_LEFT;
+    if (state.leftStick.x > deadZoneHigh || state.rightStick.x > deadZoneHigh)
+        current |= ORBIS_PAD_BUTTON_RIGHT;
+
+    unsigned int pressed = current & ~previousButtons;
+    const unsigned int heldDirections = current & directionMask;
+
+    // Repeter le mouvement si le stick ou la croix reste maintenu :
+    // premier repete apres environ 350 ms, puis toutes les 100 ms.
+    if (heldDirections) {
+        if (pressed & directionMask) {
+            stickRepeat = 0;
+        } else {
+            ++stickRepeat;
+            if (stickRepeat >= 22 && ((stickRepeat - 22) % 6) == 0)
+                pressed |= heldDirections;
+        }
+    } else {
+        stickRepeat = 0;
+    }
+
     previousButtons = current;
     lastPadButtons = (int)state.buttons;
-
     return pressed;
 }
 
