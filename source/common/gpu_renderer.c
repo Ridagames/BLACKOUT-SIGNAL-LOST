@@ -502,6 +502,19 @@ bool GpuRenderer_Render(const uint32_t *rgbaOverlay, int frameId)
     );
     cleardepthtarget(&s_gpu.commandBuffer, &s_gpu.depthTarget, 1.0f);
 
+    *s_gpu.shadowBarrierLabel = 9;
+    gnmDrawCmdEventWriteEop(
+        &s_gpu.commandBuffer, GNM_CACHE_FLUSH_AND_INV_TS_EVENT,
+        (uint64_t)s_gpu.shadowBarrierLabel, GNM_DATA_SEL_SEND_DATA64, 1
+    );
+    gnmDrawCmdWaitMem(
+        &s_gpu.commandBuffer, GNM_WAIT_REG_MEM_FUNC_EQUAL,
+        (uint64_t)s_gpu.shadowBarrierLabel, 1, 0xffffffff
+    );
+    gnmDrawCmdWaitGraphicsWrite(
+        &s_gpu.commandBuffer, GNM_ACQUIRE_TARGET_CB0 | GNM_ACQUIRE_TARGET_DB
+    );
+
     pass_model_update();
     pass_model_render(
         &s_gpu.commandBuffer, &s_gpu.model,
