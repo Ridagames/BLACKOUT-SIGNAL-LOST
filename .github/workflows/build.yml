@@ -178,7 +178,9 @@ jobs:
           test -s tools/opengnm-psbc/src/amd/common/sid_tables.h
           make -C tools/opengnm-psbc -j2
           test -x tools/opengnm-psbc/opengnm-psbc
-          tools/opengnm-psbc/opengnm-psbc --help
+          PSBC_CHECK="$(tools/opengnm-psbc/opengnm-psbc 2>&1 || true)"
+          printf '%s\\n' "$PSBC_CHECK"
+          printf '%s' "$PSBC_CHECK" | grep -Fq 'Please pass an input file'
 
       - name: Installer ImageMagick
         run: |
