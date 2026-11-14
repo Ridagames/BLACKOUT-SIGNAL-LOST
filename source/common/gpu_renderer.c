@@ -483,7 +483,7 @@ bool GpuRenderer_Render(const uint32_t *rgbaOverlay, int frameId)
     if (!s_gpu.initialized || !rgbaOverlay) return false;
 
     memcpy(s_gpu.uiTextureMemory, rgbaOverlay, GPU_OVERLAY_BYTES);
-    sceGnmFlushGarlic();
+    // Garlic memory is write-combined, so CPU writes are visible to the GPU.
 
     gnmCmdReset(&s_gpu.commandBuffer);
     *s_gpu.gpuDoneLabel = 9;
