@@ -21,6 +21,7 @@ static int lastPadButtons = 0;
 static int lastPadHandle = -1;
 static int stickRepeat = 0;
 static int diagnosticPadInit = -999;
+static int diagnosticUserInit = -999;
 static int diagnosticUserResult = -999;
 static int diagnosticActiveUser = -1;
 static unsigned int diagnosticConnected = 0;
@@ -166,30 +167,33 @@ static void drawDiagnostics(Scene2D &scene)
     const Color red = {230, 105, 78};
     const Color green = {120, 210, 145};
 
-    scene.DrawRectangle(1380, 35, 500, 270, {8, 12, 14});
-    scene.DrawRectangle(1380, 35, 4, 270, {218, 75, 54});
+    scene.DrawRectangle(1380, 35, 500, 300, {8, 12, 14});
+    scene.DrawRectangle(1380, 35, 4, 300, {218, 75, 54});
     drawText(scene, "PAD DIAGNOSTIC", 1400, 52, 2, white);
 
     std::snprintf(line, sizeof(line), "PAD INIT %d", diagnosticPadInit);
     drawText(scene, line, 1400, 88, 2, diagnosticPadInit == 0 ? green : red);
 
+    std::snprintf(line, sizeof(line), "USER INIT %d", diagnosticUserInit);
+    drawText(scene, line, 1400, 114, 2, diagnosticUserInit == 0 || diagnosticUserInit == 0x80960003 ? green : red);
+
     std::snprintf(line, sizeof(line), "USER RESULT %d", diagnosticUserResult);
-    drawText(scene, line, 1400, 118, 2, diagnosticUserResult == 0 ? green : red);
+    drawText(scene, line, 1400, 140, 2, diagnosticUserResult == 0 ? green : red);
 
     std::snprintf(line, sizeof(line), "USER ID %d", diagnosticActiveUser);
-    drawText(scene, line, 1400, 148, 2, white);
+    drawText(scene, line, 1400, 166, 2, white);
 
     std::snprintf(line, sizeof(line), "PAD HANDLE %d", lastPadHandle);
-    drawText(scene, line, 1400, 178, 2, lastPadHandle >= 0 ? green : red);
+    drawText(scene, line, 1400, 192, 2, lastPadHandle >= 0 ? green : red);
 
     std::snprintf(line, sizeof(line), "READ %d", lastPadReadResult);
-    drawText(scene, line, 1400, 208, 2, lastPadReadResult == 0 ? green : red);
+    drawText(scene, line, 1400, 218, 2, lastPadReadResult == 0 ? green : red);
 
     std::snprintf(line, sizeof(line), "BUTTONS %08X", (unsigned int)lastPadButtons);
-    drawText(scene, line, 1400, 238, 2, white);
+    drawText(scene, line, 1400, 244, 2, white);
 
     std::snprintf(line, sizeof(line), "CONNECTED %u", diagnosticConnected);
-    drawText(scene, line, 1400, 268, 2, diagnosticConnected ? green : red);
+    drawText(scene, line, 1400, 270, 2, diagnosticConnected ? green : red);
 }
 
 static void render(Scene2D &scene, PNG &background, int frameId)
@@ -271,14 +275,20 @@ int main()
     if (!background.IsLoaded())
         write_status("BLACKOUT_MENU_IMAGE_LOAD_FAILED");
 
+    // Le service utilisateur doit etre initialise AVANT GetInitialUser.
+    const int userInit = sceUserServiceInitialize(NULL);
+    int activeUser = -1;
+    int userResult = -999;
+    if (userInit == 0 || (unsigned int)userInit == 0x80960003u)
+        userResult = sceUserServiceGetInitialUser(&activeUser);
+
     const int padInit = scePadInit();
     int pad = -1;
-    int activeUser = -1;
-    const int userResult = sceUserServiceGetInitialUser(&activeUser);
     diagnosticPadInit = padInit;
+    diagnosticUserInit = userInit;
     diagnosticUserResult = userResult;
     diagnosticActiveUser = activeUser;
-    if (padInit == 0 && userResult == 0) {
+    if (padInit == 0 && (userInit == 0 || (unsigned int)userInit == 0x80960003u) && userResult == 0) {
         pad = scePadOpen(activeUser, ORBIS_PAD_PORT_TYPE_STANDARD, 0, NULL);
         // Si le handle est deja ouvert par le systeme, recuperer le handle existant.
         if (pad < 0)
