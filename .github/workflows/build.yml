@@ -75,7 +75,7 @@ jobs:
         run: |
           set -eu
           apt-get update
-          apt-get install -y imagemagick glslang-tools python3-mako
+          apt-get install -y imagemagick glslang-tools python3-mako python3-yaml
           glslangValidator --version
           python3 -c "import mako; print('Mako ready')"
 
