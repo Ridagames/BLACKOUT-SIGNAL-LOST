@@ -326,3 +326,35 @@ void Scene2D::DrawText(char *txt, FT_Face face, int startX, int startY, Color bg
     }
 }
 #endif
+
+void Scene2D::DrawARGBScaled(const uint32_t *pixels, int srcWidth, int srcHeight,
+                             int x, int y, int drawWidth, int drawHeight)
+{
+    if (!pixels || srcWidth <= 0 || srcHeight <= 0 ||
+        drawWidth <= 0 || drawHeight <= 0 || !frameBuffers ||
+        activeFrameBufferIdx < 0 || activeFrameBufferIdx >= frameBufferCount)
+        return;
+
+    int left = x < 0 ? 0 : x;
+    int top = y < 0 ? 0 : y;
+    int right = x + drawWidth;
+    int bottom = y + drawHeight;
+    if (right > width) right = width;
+    if (bottom > height) bottom = height;
+    if (left >= right || top >= bottom) return;
+
+    uint32_t *target = (uint32_t *)frameBuffers[activeFrameBufferIdx];
+    for (int py = top; py < bottom; ++py) {
+        int sy = (int)(((int64_t)(py - y) * srcHeight) / drawHeight);
+        if (sy < 0) sy = 0;
+        if (sy >= srcHeight) sy = srcHeight - 1;
+        const uint32_t *sourceRow = pixels + (size_t)sy * srcWidth;
+        uint32_t *targetRow = target + (size_t)py * width;
+        for (int px = left; px < right; ++px) {
+            int sx = (int)(((int64_t)(px - x) * srcWidth) / drawWidth);
+            if (sx < 0) sx = 0;
+            if (sx >= srcWidth) sx = srcWidth - 1;
+            targetRow[px] = 0x80000000u | (sourceRow[sx] & 0x00FFFFFFu);
+        }
+    }
+}
