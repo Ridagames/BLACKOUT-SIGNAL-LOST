@@ -43,6 +43,7 @@ class Scene2D
     int frameBufferCount;
 
     int activeFrameBufferIdx;
+    bool overlayMode;
 
     bool initFlipQueue();
     bool allocateFrameBuffers(int num);
@@ -55,6 +56,9 @@ public:
     ~Scene2D();
 
     bool Init(size_t memSize, int numFrameBuffers);
+    bool InitOverlay();
+    const uint32_t *GetPixels() const;
+    void FrameBufferClearTransparent();
 
     void SetActiveFrameBuffer(int index);
     void SubmitFlip(int frameID);
