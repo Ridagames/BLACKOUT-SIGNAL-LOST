@@ -382,10 +382,8 @@ int main()
         const unsigned int pressed = pendingPressed.exchange(0, std::memory_order_relaxed);
         bool changed = false;
 
-        // Mode de secours : si le GPU n'a pas pu demarrer ou a echoue,
-        // CERCLE ferme le homebrew au lieu de laisser un ecran noir bloque.
-        if (!gpuReady && (pressed & ORBIS_PAD_BUTTON_CIRCLE))
-            sceKernelExitProcess(0);
+        // Si le GPU echoue, le thread de manette reste actif afin que le systeme
+        // ne soit pas bloque; la fermeture se fait avec la touche PS.
 
         if (page == PAGE_MAIN) {
             if (pressed & ORBIS_PAD_BUTTON_UP) { selected = (selected + 2) % 3; changed = true; }
