@@ -2,6 +2,7 @@
 #include <cstring>
 #include <cstdint>
 #include <orbis/Pad.h>
+#include <orbis/UserService.h>
 #include "common/graphics.h"
 #include "common/png.h"
 
@@ -258,13 +259,21 @@ int main()
 
     const int padInit = scePadInit();
     int pad = -1;
-    if (padInit == 0)
-        pad = scePadOpen(0x10000000, 0, 0, NULL);
+    int activeUser = -1;
+    const int userResult = sceUserServiceGetInitialUser(&activeUser);
+    if (padInit == 0 && userResult == 0) {
+        pad = scePadOpen(activeUser, ORBIS_PAD_PORT_TYPE_STANDARD, 0, NULL);
+        // Si le handle est deja ouvert par le systeme, recuperer le handle existant.
+        if (pad < 0)
+            pad = scePadGetHandle(activeUser, ORBIS_PAD_PORT_TYPE_STANDARD, 0);
+    }
 
     lastPadHandle = pad;
     if (pad < 0) {
-        char message[96];
-        std::snprintf(message, sizeof(message), "BLACKOUT_PAD_OPEN_FAILED rc=%d", pad);
+        char message[128];
+        std::snprintf(message, sizeof(message),
+            "PAD_OPEN_FAILED init=%d userResult=%d user=%d handle=%d",
+            padInit, userResult, activeUser, pad);
         write_status(message);
     } else {
         write_status("BLACKOUT_PAD_CONNECTED");
