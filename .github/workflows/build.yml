@@ -36,6 +36,20 @@ jobs:
           test -s tools/opengnm/libopengnm.a
           echo "OpenGNM PS4 STATIC LIBRARY READY"
 
+      - name: Recuperer les exemples GNM et les outils de modeles glTF
+        uses: actions/checkout@v4
+        with:
+          repository: PS4-OpenGNM/freegnm-examples
+          ref: ffd055563e5b849ebef1b276ba29e730199670f8
+          path: tools/freegnm-examples
+
+      - name: Recuperer cglm pour les matrices 3D
+        uses: actions/checkout@v4
+        with:
+          repository: recp/cglm
+          ref: b9b570b78d58ceecc704f7a4e19b84dc45937ef4
+          path: tools/cglm
+
       - name: Recuperer le compilateur de shaders PS4
         uses: actions/checkout@v4
         with:
@@ -108,6 +122,9 @@ jobs:
           check_file tools/opengnm-psbc/opengnm-psbc
           check_file assets/SHADERS/nexus9.vert
           check_file assets/SHADERS/nexus9.frag
+          check_file assets/SHADERS/clear.frag
+          check_file assets/SHADERS/nexus9_ui.frag
+          check_file tools/obj_to_gltf.py
           check_file source/main.cpp
           check_file source/common/graphics.cpp
           check_file source/common/graphics.h
@@ -145,6 +162,15 @@ jobs:
           export CREATE_GP4=/usr/local/bin/create-gp4
           export PATH="$OO_PS4_TOOLCHAIN/bin/linux:$OO_PS4_TOOLCHAIN:/usr/local/bin:$PATH"
           make clean
+          python3 tools/obj_to_gltf.py assets/MODELS/NEXUS9_MENU.OBJ build/gpu-model
+          glslangValidator -V -S vert assets/SHADERS/nexus9.vert -o assets/SHADERS/nexus9.vert.spv
+          glslangValidator -V -S frag assets/SHADERS/nexus9.frag -o assets/SHADERS/nexus9.frag.spv
+          glslangValidator -V -S frag assets/SHADERS/clear.frag -o assets/SHADERS/clear.frag.spv
+          glslangValidator -V -S frag assets/SHADERS/nexus9_ui.frag -o assets/SHADERS/nexus9_ui.frag.spv
+          tools/opengnm-psbc/opengnm-psbc -s vertex -f assets/SHADERS/nexus9.vert.spv -o assets/SHADERS/nexus9.vert.sb -4
+          tools/opengnm-psbc/opengnm-psbc -s fragment -f assets/SHADERS/nexus9.frag.spv -o assets/SHADERS/nexus9.frag.sb -4
+          tools/opengnm-psbc/opengnm-psbc -s fragment -f assets/SHADERS/clear.frag.spv -o assets/SHADERS/clear.frag.sb -4
+          tools/opengnm-psbc/opengnm-psbc -s fragment -f assets/SHADERS/nexus9_ui.frag.spv -o assets/SHADERS/nexus9_ui.frag.sb -4
           make V=1
           glslangValidator -V -S vert assets/SHADERS/nexus9.vert -o assets/SHADERS/nexus9.vert.spv
           glslangValidator -V -S frag assets/SHADERS/nexus9.frag -o assets/SHADERS/nexus9.frag.spv
@@ -158,6 +184,10 @@ jobs:
           test -s sce_sys/param.sfo
           test -s sce_sys/icon0.png
           test -s build/pkg/USRDIR/MODELS/NEXUS9_MENU.OBJ
+          test -s build/pkg/USRDIR/MODELS/NEXUS9_MENU.gltf
+          test -s build/pkg/USRDIR/MODELS/NEXUS9_MENU.bin
+          test -s build/pkg/USRDIR/SHADERS/nexus9.vert.sb
+          test -s build/pkg/USRDIR/SHADERS/nexus9.frag.sb
           test -s build/pkg/sce_module/libc.prx
           test -s build/pkg/sce_module/libSceFios2.prx
           PKG="IV0000-BLSG00001_00-0000000000000001.pkg"
