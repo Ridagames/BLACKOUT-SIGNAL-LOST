@@ -1,6 +1,7 @@
 #include <cstdio>
 #include <cstring>
 #include <cstdint>
+#include <orbis/libkernel.h>
 #include <orbis/Pad.h>
 #include <orbis/UserService.h>
 #include "common/graphics.h"
@@ -187,7 +188,7 @@ static void drawDiagnostics(Scene2D &scene)
     drawText(scene, line, 1400, 192, 2, lastPadHandle >= 0 ? green : red);
 
     std::snprintf(line, sizeof(line), "READ %d", lastPadReadResult);
-    drawText(scene, line, 1400, 218, 2, lastPadReadResult == 0 ? green : red);
+    drawText(scene, line, 1400, 218, 2, lastPadReadResult >= 0 ? green : red);
 
     std::snprintf(line, sizeof(line), "BUTTONS %08X", (unsigned int)lastPadButtons);
     drawText(scene, line, 1400, 244, 2, white);
@@ -229,7 +230,15 @@ static unsigned int pollPressed(int pad, OrbisPadData &state)
     // lire directement l'etat des boutons avec scePadReadState.
     // Ne pas melanger scePadRead et scePadReadState dans la boucle du menu.
     lastPadReadResult = scePadReadState(pad, &state);
-    if (lastPadReadResult != 0) {
+    // Comme PS MTP Explorer : les codes >= 0 ne sont pas des erreurs.
+    if (lastPadReadResult < 0) {
+        lastPadButtons = 0;
+        previousButtons = 0;
+        diagnosticConnected = 0;
+        return 0;
+    }
+    diagnosticConnected = (unsigned)state.connected;
+    if (!state.connected) {
         lastPadButtons = 0;
         previousButtons = 0;
         return 0;
@@ -275,21 +284,20 @@ int main()
     if (!background.IsLoaded())
         write_status("BLACKOUT_MENU_IMAGE_LOAD_FAILED");
 
-    // Le service utilisateur doit etre initialise AVANT GetInitialUser.
-    const int userInit = sceUserServiceInitialize(NULL);
-    int activeUser = -1;
-    int userResult = -999;
-    if (userInit == 0 || (unsigned int)userInit == 0x80960003u)
-        userResult = sceUserServiceGetInitialUser(&activeUser);
-
+    // Initialisation et ouverture reprises du flux de controleur de PS MTP Explorer.
     const int padInit = scePadInit();
+    OrbisUserServiceInitializeParams userParams = { ORBIS_KERNEL_PRIO_FIFO_LOWEST };
+    const int userInit = sceUserServiceInitialize(&userParams);
+    int activeUser = -1;
+    // Le depot de reference tente GetInitialUser meme si le service etait deja initialise.
+    const int userResult = sceUserServiceGetInitialUser(&activeUser);
     int pad = -1;
     diagnosticPadInit = padInit;
     diagnosticUserInit = userInit;
     diagnosticUserResult = userResult;
     diagnosticActiveUser = activeUser;
-    if (padInit == 0 && (userInit == 0 || (unsigned int)userInit == 0x80960003u) && userResult == 0) {
-        pad = scePadOpen(activeUser, ORBIS_PAD_PORT_TYPE_STANDARD, 0, NULL);
+    if (padInit == 0 && userResult == 0) {
+        pad = scePadOpen(activeUser, 0, 0, NULL);
         // Si le handle est deja ouvert par le systeme, recuperer le handle existant.
         if (pad < 0)
             pad = scePadGetHandle(activeUser, ORBIS_PAD_PORT_TYPE_STANDARD, 0);
