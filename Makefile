@@ -11,19 +11,21 @@ PROJDIR := source
 INTDIR := $(PROJDIR)/x64/Debug
 STAGE := build/pkg
 DIAGNOSTIC_BUILD := 0
-MENU_FRAMES := $(addprefix assets/USRDIR/BLACKOUT_MENU_,00.png 01.png 02.png 03.png 04.png 05.png)
+MENU_VIDEO := assets/USRDIR/BLACKOUT_MENU.mp4
+MENU_FALLBACK := assets/USRDIR/BLACKOUT_MENU.png
 
 # OpenOrbis runtime modules supplied by the SDK.
 MODULE_SOURCE := $(TOOLCHAIN)/bin/data/modules
 LIBC_PRX := $(MODULE_SOURCE)/libc.prx
 FIOS_PRX := $(MODULE_SOURCE)/libSceFios2.prx
 
-LIBS := -lc -lkernel -lc++ -lSceVideoOut -lScePad -lSceUserService
+LIBS := -lc -lkernel -lc++ -lSceVideoOut -lScePad -lSceUserService -lSceSysmodule -lSceAvPlayer
 EXTRAFLAGS := -O2 -Wall
 CFILES := $(wildcard $(PROJDIR)/*.c)
 CPPFILES := $(wildcard $(PROJDIR)/*.cpp)
 GRAPHICS_OBJ := $(INTDIR)/graphics.o
 PNG_OBJ := $(INTDIR)/png.o
+VIDEO_OBJ := $(INTDIR)/video_player.o
 OBJS := $(patsubst $(PROJDIR)/%.c,$(INTDIR)/%.o,$(CFILES)) \
         $(patsubst $(PROJDIR)/%.cpp,$(INTDIR)/%.o,$(CPPFILES)) \
         $(GRAPHICS_OBJ) \
@@ -66,6 +68,9 @@ $(GRAPHICS_OBJ): $(PROJDIR)/common/graphics.cpp $(PROJDIR)/common/graphics.h | $
 $(PNG_OBJ): $(PROJDIR)/common/png.cpp $(PROJDIR)/common/png.h $(PROJDIR)/common/graphics.h | $(INTDIR)
 	$(CXX) $(CXXFLAGS) -o $@ $<
 
+$(VIDEO_OBJ): $(PROJDIR)/common/video_player.cpp $(PROJDIR)/common/video_player.h $(PROJDIR)/common/orbis_avplayer.h | $(INTDIR)
+	$(CXX) $(CXXFLAGS) -o $@ $<
+
 sce_sys/icon0.png: sce_sys/ICON0.PNG
 	convert "$<" -resize '512x512!' -background black -alpha remove -alpha off -depth 8 PNG24:"$@"
 	test -s "$@"
@@ -91,18 +96,18 @@ sce_sys/param.sfo: Makefile
 	$(PKGTOOL) sfo_setentry $@ TITLE_ID --type Utf8 --maxsize 12 --value '$(TITLE_ID)'
 	$(PKGTOOL) sfo_setentry $@ VERSION --type Utf8 --maxsize 8 --value '$(VERSION)'
 
-pkg.gp4: eboot.bin sce_sys/param.sfo sce_sys/icon0.png $(MENU_FRAMES) $(LIBC_PRX) $(FIOS_PRX)
+pkg.gp4: eboot.bin sce_sys/param.sfo sce_sys/icon0.png $(MENU_VIDEO) $(MENU_FALLBACK) $(LIBC_PRX) $(FIOS_PRX)
 	test -x $(CREATE_GP4)
 	rm -rf $(STAGE)
 	mkdir -p $(STAGE)/sce_sys $(STAGE)/sce_module $(STAGE)/USRDIR
 	cp eboot.bin $(STAGE)/eboot.bin
 	cp sce_sys/param.sfo $(STAGE)/sce_sys/param.sfo
 	cp sce_sys/icon0.png $(STAGE)/sce_sys/icon0.png
-	cp $(MENU_FRAMES) $(STAGE)/USRDIR/
-	cp assets/USRDIR/BLACKOUT_MENU_00.png $(STAGE)/USRDIR/BLACKOUT_MENU.png
+	cp $(MENU_VIDEO) $(STAGE)/USRDIR/BLACKOUT_MENU.mp4
+	cp $(MENU_FALLBACK) $(STAGE)/USRDIR/BLACKOUT_MENU.png
 	cp $(LIBC_PRX) $(STAGE)/sce_module/libc.prx
 	cp $(FIOS_PRX) $(STAGE)/sce_module/libSceFios2.prx
-	cd $(STAGE) && $(CREATE_GP4) -out pkg.gp4 --content-id=$(CONTENT_ID) --files "eboot.bin sce_sys/param.sfo sce_sys/icon0.png sce_module/libc.prx sce_module/libSceFios2.prx USRDIR/BLACKOUT_MENU.png USRDIR/BLACKOUT_MENU_00.png USRDIR/BLACKOUT_MENU_01.png USRDIR/BLACKOUT_MENU_02.png USRDIR/BLACKOUT_MENU_03.png USRDIR/BLACKOUT_MENU_04.png USRDIR/BLACKOUT_MENU_05.png"
+	cd $(STAGE) && $(CREATE_GP4) -out pkg.gp4 --content-id=$(CONTENT_ID) --files "eboot.bin sce_sys/param.sfo sce_sys/icon0.png sce_module/libc.prx sce_module/libSceFios2.prx USRDIR/BLACKOUT_MENU.png USRDIR/BLACKOUT_MENU.mp4"
 	cp $(STAGE)/pkg.gp4 pkg.gp4
 
 $(CONTENT_ID).pkg: pkg.gp4
