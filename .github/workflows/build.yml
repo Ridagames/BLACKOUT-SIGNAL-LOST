@@ -242,17 +242,17 @@ jobs:
           s = s.replace(".y = 0.5,", ".y = 1.65,")
           s = s.replace(".x = -30.0,", ".x = 0.0,")
           s = s.replace("s_mpass.cbufmem->c_mmodel = GLMS_MAT4_IDENTITY;", """s_mpass.cbufmem->c_mmodel = GLMS_MAT4_IDENTITY;
-          const vec3s shadowLight = {{0.0, 4.0, -8.0}};
-          const vec3s shadowTarget = {{0.0, 1.5, -22.0}};
+          const vec3s shadowLight = {{0.0, 4.0, 8.0}};
+          const vec3s shadowTarget = {{0.0, 1.5, 22.0}};
           const vec3s shadowUp = {{0.0, 1.0, 0.0}};
           const mat4s shadowView = glms_lookat(shadowLight, shadowTarget, shadowUp);
           const mat4s shadowProjection = glms_ortho(-14.0, 14.0, -14.0, 14.0, 0.1, 60.0);
           s_mpass.cbufmem->c_mlight = glms_mat4_mul(shadowProjection, shadowView);""")
-          s = s.replace(".position = (vec3s){{2.0, 2.0, 0.0}},", ".position = (vec3s){{0.0, 4.0, -8.0}},")
+          s = s.replace(".position = (vec3s){{2.0, 2.0, 0.0}},", ".position = (vec3s){{0.0, 4.0, 8.0}},")
           s = s.replace(".falloff = calcsquaredfalloffinv(2.5),", ".falloff = calcsquaredfalloffinv(12.0),")
           s = s.replace(".color = (vec3s){{0.0, 0.85, 0.0}},", ".color = (vec3s){{0.95, 0.72, 0.48}},")
           s = s.replace(".colorintensity = 1500.0,", ".colorintensity = 42.0,", 1)
-          s = s.replace(".position = (vec3s){{2.0, 2.0, 4.0}},", ".position = (vec3s){{0.0, 3.2, -22.0}},")
+          s = s.replace(".position = (vec3s){{2.0, 2.0, 4.0}},", ".position = (vec3s){{0.0, 3.2, 22.0}},")
           s = s.replace(".falloff = calcsquaredfalloffinv(5.0),", ".falloff = calcsquaredfalloffinv(10.0),")
           s = s.replace(".color = (vec3s){{0.55, 0.0, 0.5}},", ".color = (vec3s){{0.55, 0.08, 0.06}},")
           s = s.replace(".colorintensity = 1500.0,", ".colorintensity = 26.0,", 1)
