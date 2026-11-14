@@ -5,8 +5,7 @@
 #include <orbis/Pad.h>
 #include <orbis/UserService.h>
 #include "common/graphics.h"
-#include "common/png.h"
-#include "common/video_player.h"
+#include "common/obj_renderer.h"
 
 static const int SCREEN_W = 1920;
 static const int SCREEN_H = 1080;
@@ -201,19 +200,15 @@ static void drawDiagnostics(Scene2D &scene)
 
 #endif
 
-static void render(Scene2D &scene, PNG &fallback,
-                   const uint32_t *videoPixels, int videoWidth, int videoHeight,
-                   int frameId)
+static void render(Scene2D &scene, ObjRenderer &background, int frameId)
 {
     scene.FrameBufferFill({0, 0, 0});
-    if (videoPixels && videoWidth > 0 && videoHeight > 0) {
-        scene.DrawARGBScaled(videoPixels, videoWidth, videoHeight,
+    const uint32_t *pixels = background.Render((float)frameId / 60.0f);
+    if (pixels)
+        scene.DrawARGBScaled(pixels, background.Width(), background.Height(),
                              0, 0, SCREEN_W, SCREEN_H);
-    } else if (fallback.IsLoaded()) {
-        fallback.DrawScaled(&scene, 0, 0, SCREEN_W, SCREEN_H);
-    }
 
-    // Les éléments du menu restent dessinés par-dessus le décor vidéo.
+    // Interface de menu superposee au decor 3D temps reel.
     if (page == PAGE_MAIN) drawMain(scene);
     else if (page == PAGE_NEW_GAME) drawNewGame(scene);
     else if (page == PAGE_CONTINUE) drawContinue(scene);
@@ -323,16 +318,12 @@ int main()
         for (;;) sceKernelUsleep(1000000);
     }
 
-    PNG fallbackBackground("/app0/USRDIR/BLACKOUT_MENU.png");
-    VideoPlayer menuVideo;
-    const bool avPlayerReady = VideoPlayer::globalInit();
-    const bool menuVideoReady = avPlayerReady && menuVideo.open("/app0/USRDIR/BLACKOUT_MENU.mp4");
-    if (menuVideoReady)
-        write_status("BLACKOUT_MENU_MP4_READY");
-    else if (fallbackBackground.IsLoaded())
-        write_status("BLACKOUT_MENU_MP4_UNAVAILABLE_USING_STILL_FALLBACK");
+    ObjRenderer menuScene;
+    const bool modelReady = menuScene.Load("/app0/USRDIR/MODELS/NEXUS9_MENU.OBJ");
+    if (modelReady)
+        write_status(menuScene.Error());
     else
-        write_status("BLACKOUT_MENU_VIDEO_AND_FALLBACK_LOAD_FAILED");
+        write_status(menuScene.Error());
 
     // Initialisation et ouverture reprises du flux de controleur de PS MTP Explorer.
     const int padInit = scePadInit();
@@ -428,11 +419,9 @@ int main()
             }
         }
 
-        // Pull decoded H.264 frames continuously; AvPlayer handles the MP4 loop.
-        menuVideo.update();
+        // Scene 3D OBJ rasterisee en temps reel : aucun MP4 ni sequence d'images.
         scene.SetActiveFrameBuffer(frameId % 2);
-        render(scene, fallbackBackground, menuVideo.pixels(),
-               menuVideo.width(), menuVideo.height(), frameId++);
+        render(scene, menuScene, frameId++);
         sceKernelUsleep(12000);
     }
     return 0;
