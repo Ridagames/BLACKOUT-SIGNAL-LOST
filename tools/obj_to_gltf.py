@@ -136,11 +136,10 @@ for mi,name in enumerate(materials):
     tris=groups.get(name,[])
     if not tris: continue
     packed=bytearray(); indices=[]; mins=[1e30]*3; maxs=[-1e30]*3
-    for tri in tris:
-        for pos,norm,uv,mr in tri:
-            for j,v in enumerate(pos): mins[j]=min(mins[j],v); maxs[j]=max(maxs[j],v)
-            packed.extend(struct.pack("<10f",*(pos+norm+uv+mr)))
-            indices.append(len(indices))
+    for pos,norm,uv,mr in tris:
+        for j,v in enumerate(pos): mins[j]=min(mins[j],v); maxs[j]=max(maxs[j],v)
+        packed.extend(struct.pack("<10f",*(pos+norm+uv+mr)))
+        indices.append(len(indices))
     vview=add_view(bytes(packed),40)
     pacc=add_accessor(vview,5126,len(indices), "VEC3",0,mins,maxs)
     nacc=add_accessor(vview,5126,len(indices), "VEC3",12)
