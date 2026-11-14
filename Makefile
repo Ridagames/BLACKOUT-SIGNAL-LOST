@@ -11,26 +11,23 @@ PROJDIR := source
 INTDIR := $(PROJDIR)/x64/Debug
 STAGE := build/pkg
 DIAGNOSTIC_BUILD := 0
-MENU_VIDEO := assets/USRDIR/BLACKOUT_MENU.mp4
-MENU_FALLBACK := assets/USRDIR/BLACKOUT_MENU.png
+MENU_MODEL := assets/MODELS/NEXUS9_MENU.OBJ
 
 # OpenOrbis runtime modules supplied by the SDK.
 MODULE_SOURCE := $(TOOLCHAIN)/bin/data/modules
 LIBC_PRX := $(MODULE_SOURCE)/libc.prx
 FIOS_PRX := $(MODULE_SOURCE)/libSceFios2.prx
 
-LIBS := -lc -lkernel -lc++ -lSceVideoOut -lScePad -lSceUserService -lSceSysmodule -lSceAvPlayer
+LIBS := -lc -lkernel -lc++ -lSceVideoOut -lScePad -lSceUserService -lSceSysmodule
 EXTRAFLAGS := -O2 -Wall
 CFILES := $(wildcard $(PROJDIR)/*.c)
 CPPFILES := $(wildcard $(PROJDIR)/*.cpp)
 GRAPHICS_OBJ := $(INTDIR)/graphics.o
-PNG_OBJ := $(INTDIR)/png.o
-VIDEO_OBJ := $(INTDIR)/video_player.o
+OBJ_OBJ := $(INTDIR)/obj_renderer.o
 OBJS := $(patsubst $(PROJDIR)/%.c,$(INTDIR)/%.o,$(CFILES)) \
         $(patsubst $(PROJDIR)/%.cpp,$(INTDIR)/%.o,$(CPPFILES)) \
         $(GRAPHICS_OBJ) \
-        $(PNG_OBJ) \
-        $(VIDEO_OBJ)
+        $(OBJ_OBJ)
 
 CFLAGS := --target=x86_64-pc-freebsd12-elf -fPIC -funwind-tables -c $(EXTRAFLAGS) -isysroot $(TOOLCHAIN) -isystem $(TOOLCHAIN)/include
 CXXFLAGS := $(CFLAGS) -isystem $(TOOLCHAIN)/include/c++/v1 -DDIAGNOSTIC_BUILD=$(DIAGNOSTIC_BUILD)
@@ -66,10 +63,7 @@ $(INTDIR)/%.o: $(PROJDIR)/%.cpp | $(INTDIR)
 $(GRAPHICS_OBJ): $(PROJDIR)/common/graphics.cpp $(PROJDIR)/common/graphics.h | $(INTDIR)
 	$(CXX) $(CXXFLAGS) -o $@ $<
 
-$(PNG_OBJ): $(PROJDIR)/common/png.cpp $(PROJDIR)/common/png.h $(PROJDIR)/common/graphics.h | $(INTDIR)
-	$(CXX) $(CXXFLAGS) -o $@ $<
-
-$(VIDEO_OBJ): $(PROJDIR)/common/video_player.cpp $(PROJDIR)/common/video_player.h $(PROJDIR)/common/orbis_avplayer.h | $(INTDIR)
+$(OBJ_OBJ): $(PROJDIR)/common/obj_renderer.cpp $(PROJDIR)/common/obj_renderer.h $(PROJDIR)/common/graphics.h | $(INTDIR)
 	$(CXX) $(CXXFLAGS) -o $@ $<
 
 sce_sys/icon0.png: sce_sys/ICON0.PNG
@@ -97,18 +91,17 @@ sce_sys/param.sfo: Makefile
 	$(PKGTOOL) sfo_setentry $@ TITLE_ID --type Utf8 --maxsize 12 --value '$(TITLE_ID)'
 	$(PKGTOOL) sfo_setentry $@ VERSION --type Utf8 --maxsize 8 --value '$(VERSION)'
 
-pkg.gp4: eboot.bin sce_sys/param.sfo sce_sys/icon0.png $(MENU_VIDEO) $(MENU_FALLBACK) $(LIBC_PRX) $(FIOS_PRX)
+pkg.gp4: eboot.bin sce_sys/param.sfo sce_sys/icon0.png $(MENU_MODEL) $(LIBC_PRX) $(FIOS_PRX)
 	test -x $(CREATE_GP4)
 	rm -rf $(STAGE)
-	mkdir -p $(STAGE)/sce_sys $(STAGE)/sce_module $(STAGE)/USRDIR
+	mkdir -p $(STAGE)/sce_sys $(STAGE)/sce_module $(STAGE)/USRDIR/MODELS
 	cp eboot.bin $(STAGE)/eboot.bin
 	cp sce_sys/param.sfo $(STAGE)/sce_sys/param.sfo
 	cp sce_sys/icon0.png $(STAGE)/sce_sys/icon0.png
-	cp $(MENU_VIDEO) $(STAGE)/USRDIR/BLACKOUT_MENU.mp4
-	cp $(MENU_FALLBACK) $(STAGE)/USRDIR/BLACKOUT_MENU.png
+	cp $(MENU_MODEL) $(STAGE)/USRDIR/MODELS/NEXUS9_MENU.OBJ
 	cp $(LIBC_PRX) $(STAGE)/sce_module/libc.prx
 	cp $(FIOS_PRX) $(STAGE)/sce_module/libSceFios2.prx
-	cd $(STAGE) && $(CREATE_GP4) -out pkg.gp4 --content-id=$(CONTENT_ID) --files "eboot.bin sce_sys/param.sfo sce_sys/icon0.png sce_module/libc.prx sce_module/libSceFios2.prx USRDIR/BLACKOUT_MENU.png USRDIR/BLACKOUT_MENU.mp4"
+	cd $(STAGE) && $(CREATE_GP4) -out pkg.gp4 --content-id=$(CONTENT_ID) --files "eboot.bin sce_sys/param.sfo sce_sys/icon0.png sce_module/libc.prx sce_module/libSceFios2.prx USRDIR/MODELS/NEXUS9_MENU.OBJ"
 	cp $(STAGE)/pkg.gp4 pkg.gp4
 
 $(CONTENT_ID).pkg: pkg.gp4
