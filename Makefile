@@ -11,6 +11,7 @@ PROJDIR := source
 INTDIR := $(PROJDIR)/x64/Debug
 STAGE := build/pkg
 DIAGNOSTIC_BUILD := 0
+MENU_FRAMES := $(addprefix assets/USRDIR/BLACKOUT_MENU_,00.png 01.png 02.png 03.png 04.png 05.png)
 
 # OpenOrbis runtime modules supplied by the SDK.
 MODULE_SOURCE := $(TOOLCHAIN)/bin/data/modules
@@ -90,17 +91,18 @@ sce_sys/param.sfo: Makefile
 	$(PKGTOOL) sfo_setentry $@ TITLE_ID --type Utf8 --maxsize 12 --value '$(TITLE_ID)'
 	$(PKGTOOL) sfo_setentry $@ VERSION --type Utf8 --maxsize 8 --value '$(VERSION)'
 
-pkg.gp4: eboot.bin sce_sys/param.sfo sce_sys/icon0.png assets/USRDIR/BLACKOUT_MENU.png $(LIBC_PRX) $(FIOS_PRX)
+pkg.gp4: eboot.bin sce_sys/param.sfo sce_sys/icon0.png $(MENU_FRAMES) $(LIBC_PRX) $(FIOS_PRX)
 	test -x $(CREATE_GP4)
 	rm -rf $(STAGE)
 	mkdir -p $(STAGE)/sce_sys $(STAGE)/sce_module $(STAGE)/USRDIR
 	cp eboot.bin $(STAGE)/eboot.bin
 	cp sce_sys/param.sfo $(STAGE)/sce_sys/param.sfo
 	cp sce_sys/icon0.png $(STAGE)/sce_sys/icon0.png
-	cp assets/USRDIR/BLACKOUT_MENU.png $(STAGE)/USRDIR/BLACKOUT_MENU.png
+	cp $(MENU_FRAMES) $(STAGE)/USRDIR/
+	cp assets/USRDIR/BLACKOUT_MENU_00.png $(STAGE)/USRDIR/BLACKOUT_MENU.png
 	cp $(LIBC_PRX) $(STAGE)/sce_module/libc.prx
 	cp $(FIOS_PRX) $(STAGE)/sce_module/libSceFios2.prx
-	cd $(STAGE) && $(CREATE_GP4) -out pkg.gp4 --content-id=$(CONTENT_ID) --files "eboot.bin sce_sys/param.sfo sce_sys/icon0.png sce_module/libc.prx sce_module/libSceFios2.prx USRDIR/BLACKOUT_MENU.png"
+	cd $(STAGE) && $(CREATE_GP4) -out pkg.gp4 --content-id=$(CONTENT_ID) --files "eboot.bin sce_sys/param.sfo sce_sys/icon0.png sce_module/libc.prx sce_module/libSceFios2.prx USRDIR/BLACKOUT_MENU.png USRDIR/BLACKOUT_MENU_00.png USRDIR/BLACKOUT_MENU_01.png USRDIR/BLACKOUT_MENU_02.png USRDIR/BLACKOUT_MENU_03.png USRDIR/BLACKOUT_MENU_04.png USRDIR/BLACKOUT_MENU_05.png"
 	cp $(STAGE)/pkg.gp4 pkg.gp4
 
 $(CONTENT_ID).pkg: pkg.gp4
