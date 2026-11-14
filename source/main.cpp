@@ -23,6 +23,7 @@ static int stickRepeat = 0;
 static int diagnosticPadInit = -999;
 static int diagnosticUserResult = -999;
 static int diagnosticActiveUser = -1;
+static unsigned int diagnosticConnected = 0;
 
 static void write_status(const char *message)
 {
