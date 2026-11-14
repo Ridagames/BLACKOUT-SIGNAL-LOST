@@ -7,15 +7,17 @@
 
 static Color materialColor(const char *name)
 {
-    if (std::strcmp(name, "floor") == 0) return {43, 49, 51};
-    if (std::strcmp(name, "wall") == 0) return {79, 86, 84};
-    if (std::strcmp(name, "ceiling") == 0) return {48, 55, 56};
-    if (std::strcmp(name, "metal") == 0) return {82, 91, 92};
-    if (std::strcmp(name, "darkmetal") == 0) return {24, 31, 33};
-    if (std::strcmp(name, "warning") == 0) return {135, 48, 31};
-    if (std::strcmp(name, "light") == 0) return {205, 75, 43};
-    if (std::strcmp(name, "glass") == 0) return {31, 57, 61};
-    if (std::strcmp(name, "bio") == 0) return {62, 79, 57};
+    // Palette industrielle NEXUS-9 : acier froid, revetement graphite,
+    // verre de securite et contamination organique.
+    if (std::strcmp(name, "floor") == 0) return {31, 37, 39};
+    if (std::strcmp(name, "wall") == 0) return {67, 76, 78};
+    if (std::strcmp(name, "ceiling") == 0) return {35, 43, 46};
+    if (std::strcmp(name, "metal") == 0) return {112, 125, 129};
+    if (std::strcmp(name, "darkmetal") == 0) return {18, 25, 29};
+    if (std::strcmp(name, "warning") == 0) return {170, 52, 31};
+    if (std::strcmp(name, "light") == 0) return {255, 104, 61};
+    if (std::strcmp(name, "glass") == 0) return {22, 52, 62};
+    if (std::strcmp(name, "bio") == 0) return {76, 103, 57};
     return {75, 82, 82};
 }
 
@@ -130,8 +132,18 @@ const uint32_t *ObjRenderer::Render(float timeSeconds)
         float nl = std::sqrt(nx*nx + ny*ny + nz*nz);
         if (nl < 0.0001f) continue;
         nx /= nl; ny /= nl; nz /= nl;
-        float diffuse = std::fabs(nx*lightX + ny*lightY + nz*lightZ);
-        float shade = (0.30f + 0.52f * diffuse) * pulse;
+        const float diffuse = std::fabs(nx*lightX + ny*lightY + nz*lightZ);
+        const float cx = (a.x + b.x + c.x) / 3.0f;
+        const float cy = (a.y + b.y + c.y) / 3.0f;
+        const float cz = (a.z + b.z + c.z) / 3.0f;
+        // Eclairage local de plusieurs plafonniers et voyants de securite.
+        const float l1x = cx - 0.0f, l1y = cy - 2.75f, l1z = cz - 5.0f;
+        const float l2x = cx - 0.0f, l2y = cy - 2.70f, l2z = cz - 20.0f;
+        const float d1 = std::sqrt(l1x*l1x + l1y*l1y + l1z*l1z);
+        const float d2 = std::sqrt(l2x*l2x + l2y*l2y + l2z*l2z);
+        const float local1 = 0.34f / (1.0f + d1*d1*0.055f);
+        const float local2 = 0.26f / (1.0f + d2*d2*0.045f);
+        const float shade = std::min(1.18f, (0.22f + 0.43f*diffuse + local1 + local2) * pulse);
         int minX = (int)std::floor(std::min(p[0].x, std::min(p[1].x,p[2].x)));
         int maxX = (int)std::ceil (std::max(p[0].x, std::max(p[1].x,p[2].x)));
         int minY = (int)std::floor(std::min(p[0].y, std::min(p[1].y,p[2].y)));
