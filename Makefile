@@ -28,13 +28,14 @@ EXTRAFLAGS := -O2 -Wall
 CFILES := $(wildcard $(PROJDIR)/*.c)
 CPPFILES := $(wildcard $(PROJDIR)/*.cpp)
 GRAPHICS_OBJ := $(INTDIR)/graphics.o
-OBJ_OBJ := $(INTDIR)/obj_renderer.o
+GPU_OBJS := $(INTDIR)/gpu_renderer.o $(INTDIR)/gpu_fs.o $(INTDIR)/gpu_utility.o \
+            $(INTDIR)/gpu_memalloc.o $(INTDIR)/gpu_misc.o $(INTDIR)/gpu_displayctx.o \
+            $(INTDIR)/gpu_gltfmodel.o $(INTDIR)/gpu_pass_model.o
 OBJS := $(patsubst $(PROJDIR)/%.c,$(INTDIR)/%.o,$(CFILES)) \
         $(patsubst $(PROJDIR)/%.cpp,$(INTDIR)/%.o,$(CPPFILES)) \
-        $(GRAPHICS_OBJ) \
-        $(OBJ_OBJ)
+        $(GRAPHICS_OBJ) $(GPU_OBJS)
 
-CFLAGS := -Itools/opengnm/include --target=x86_64-pc-freebsd12-elf -fPIC -funwind-tables -c $(EXTRAFLAGS) -isysroot $(TOOLCHAIN) -isystem $(TOOLCHAIN)/include
+CFLAGS := -Itools/opengnm/include -Itools/freegnm-examples/shared/src -Itools/freegnm-examples/gltf/src -Itools/cglm/include -DUSE_OPENGNM -DCGLM_ALL_UNALIGNED -DCGLM_FORCE_LEFT_HANDED -DCGLM_FORCE_DEPTH_ZERO_TO_ONE -D_BSD_SOURCE --target=x86_64-pc-freebsd12-elf -fPIC -funwind-tables -c $(EXTRAFLAGS) -isysroot $(TOOLCHAIN) -isystem $(TOOLCHAIN)/include
 CXXFLAGS := $(CFLAGS) -isystem $(TOOLCHAIN)/include/c++/v1 -DDIAGNOSTIC_BUILD=$(DIAGNOSTIC_BUILD)
 LDFLAGS := -m elf_x86_64 -pie --script $(TOOLCHAIN)/link.x --eh-frame-hdr -L$(TOOLCHAIN)/lib $(LIBS) $(TOOLCHAIN)/lib/crt1.o
 
@@ -68,8 +69,29 @@ $(INTDIR)/%.o: $(PROJDIR)/%.cpp | $(INTDIR)
 $(GRAPHICS_OBJ): $(PROJDIR)/common/graphics.cpp $(PROJDIR)/common/graphics.h | $(INTDIR)
 	$(CXX) $(CXXFLAGS) -o $@ $<
 
-$(OBJ_OBJ): $(PROJDIR)/common/obj_renderer.cpp $(PROJDIR)/common/obj_renderer.h $(PROJDIR)/common/graphics.h | $(INTDIR)
-	$(CXX) $(CXXFLAGS) -o $@ $<
+$(INTDIR)/gpu_renderer.o: $(PROJDIR)/common/gpu_renderer.c | $(INTDIR)
+	$(CC) $(CFLAGS) -o $@ $<
+
+$(INTDIR)/gpu_fs.o: tools/freegnm-examples/shared/src/u/fs.c | $(INTDIR)
+	$(CC) $(CFLAGS) -o $@ $<
+
+$(INTDIR)/gpu_utility.o: tools/freegnm-examples/shared/src/u/utility.c | $(INTDIR)
+	$(CC) $(CFLAGS) -o $@ $<
+
+$(INTDIR)/gpu_memalloc.o: tools/freegnm-examples/shared/src/memalloc.c | $(INTDIR)
+	$(CC) $(CFLAGS) -o $@ $<
+
+$(INTDIR)/gpu_misc.o: tools/freegnm-examples/shared/src/misc.c | $(INTDIR)
+	$(CC) $(CFLAGS) -o $@ $<
+
+$(INTDIR)/gpu_displayctx.o: tools/freegnm-examples/shared/src/displayctx.c | $(INTDIR)
+	$(CC) $(CFLAGS) -o $@ $<
+
+$(INTDIR)/gpu_gltfmodel.o: tools/freegnm-examples/shared/src/gltfmodel.c | $(INTDIR)
+	$(CC) $(CFLAGS) -o $@ $<
+
+$(INTDIR)/gpu_pass_model.o: tools/freegnm-examples/gltf/src/pass_model.c | $(INTDIR)
+	$(CC) $(CFLAGS) -o $@ $<
 
 sce_sys/icon0.png: sce_sys/ICON0.PNG
 	convert "$<" -resize '512x512!' -background black -alpha remove -alpha off -depth 8 PNG24:"$@"
@@ -96,7 +118,7 @@ sce_sys/param.sfo: Makefile
 	$(PKGTOOL) sfo_setentry $@ TITLE_ID --type Utf8 --maxsize 12 --value '$(TITLE_ID)'
 	$(PKGTOOL) sfo_setentry $@ VERSION --type Utf8 --maxsize 8 --value '$(VERSION)'
 
-pkg.gp4: eboot.bin sce_sys/param.sfo sce_sys/icon0.png $(MENU_MODEL) $(LIBC_PRX) $(FIOS_PRX)
+pkg.gp4: eboot.bin sce_sys/param.sfo sce_sys/icon0.png $(MENU_MODEL) $(GPU_MODEL) $(GPU_MODEL_BIN) $(GPU_SHADERS) $(LIBC_PRX) $(FIOS_PRX)
 	test -x $(CREATE_GP4)
 	rm -rf $(STAGE)
 	mkdir -p $(STAGE)/sce_sys $(STAGE)/sce_module $(STAGE)/USRDIR/MODELS $(STAGE)/USRDIR/SHADERS
