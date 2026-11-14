@@ -29,6 +29,7 @@ static std::atomic<unsigned int> pendingPressed(0);
 static int diagnosticUserResult = -999;
 static int diagnosticActiveUser = -1;
 static unsigned int diagnosticConnected = 0;
+static std::atomic<bool> gpuRenderFailed(false);
 
 static void write_status(const char *message)
 {
@@ -219,8 +220,11 @@ static void render(Scene2D &scene, int frameId)
     drawDiagnostics(scene);
     #endif
 
-    if (!GpuRenderer_Render(scene.GetPixels(), frameId))
-        write_status("BLACKOUT_GPU_RENDER_FAILED");
+    if (!GpuRenderer_Render(scene.GetPixels(), frameId)) {
+        write_status("BLACKOUT_GPU_RENDER_FAILED_PRESS_CIRCLE_TO_EXIT");
+        gpuRenderFailed.store(true, std::memory_order_relaxed);
+        return;
+    }
     scene.FrameBufferSwap();
 }
 
@@ -314,15 +318,12 @@ int main()
     write_status("BLACKOUT_MENU_STARTING");
 
     Scene2D scene(SCREEN_W, SCREEN_H, 4);
-    if (!scene.InitOverlay()) {
+    const bool overlayReady = scene.InitOverlay();
+    if (!overlayReady)
         write_status("BLACKOUT_UI_OVERLAY_INIT_FAILED");
-        for (;;) sceKernelUsleep(1000000);
-    }
-    if (!GpuRenderer_Init()) {
-        write_status("BLACKOUT_GNM_GPU_INIT_FAILED");
-        for (;;) sceKernelUsleep(1000000);
-    }
 
+    // Initialiser la manette AVANT le moteur graphique : meme si le GPU
+    // echoue, l'utilisateur doit pouvoir quitter proprement l'application.
     // Initialisation et ouverture reprises du flux de controleur de PS MTP Explorer.
     const int padInit = scePadInit();
     OrbisUserServiceInitializeParams userParams = { ORBIS_KERNEL_PRIO_FIFO_LOWEST };
@@ -343,6 +344,10 @@ int main()
     }
 
     lastPadHandle = pad;
+    bool gpuReady = overlayReady && GpuRenderer_Init();
+    if (!gpuReady)
+        write_status("BLACKOUT_GPU_INIT_FAILED_PRESS_CIRCLE_TO_EXIT");
+
     if (pad < 0) {
         char message[128];
         std::snprintf(message, sizeof(message),
@@ -376,6 +381,11 @@ int main()
     for (;;) {
         const unsigned int pressed = pendingPressed.exchange(0, std::memory_order_relaxed);
         bool changed = false;
+
+        // Mode de secours : si le GPU n'a pas pu demarrer ou a echoue,
+        // CERCLE ferme le homebrew au lieu de laisser un ecran noir bloque.
+        if (!gpuReady && (pressed & ORBIS_PAD_BUTTON_CIRCLE))
+            sceKernelExitProcess(0);
 
         if (page == PAGE_MAIN) {
             if (pressed & ORBIS_PAD_BUTTON_UP) { selected = (selected + 2) % 3; changed = true; }
@@ -421,7 +431,12 @@ int main()
         }
 
         // Scene 3D GNM rendue sur le GPU PS4, menu compose par shader.
-        render(scene, frameId++);
+        // Ne jamais rappeler le renderer apres son premier echec.
+        if (gpuReady) {
+            render(scene, frameId++);
+            if (gpuRenderFailed.load(std::memory_order_relaxed))
+                gpuReady = false;
+        }
         sceKernelUsleep(12000);
     }
     return 0;
