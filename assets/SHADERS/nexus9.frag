@@ -5,14 +5,17 @@ layout(set = 0, binding = 12) uniform Constants {
     mat4 mproj;
     mat4 mview;
     mat4 mmodel;
+    mat4 lightViewProjection;
     vec4 viewpos;
     PointLight lights[2];
 } c;
 layout(set = 0, binding = 0) uniform sampler2D albedoTexture;
+layout(set = 0, binding = 1) uniform sampler2D shadowMap;
 layout(location = 0) in vec3 worldPosition;
 layout(location = 1) in vec3 worldNormal;
 layout(location = 2) in vec2 uv;
 layout(location = 3) in vec2 material;
+layout(location = 4) in vec4 shadowCoordinate;
 layout(location = 0) out vec4 outColor;
 const float PI = 3.14159265359;
 float distributionGGX(float NoH, float roughness) {
@@ -53,7 +56,16 @@ void main() {
     float metallic = clamp(material.x, 0.0, 1.0);
     float roughness = clamp(material.y, 0.045, 1.0);
     vec3 color = albedo * 0.035;
-    color += evaluateLight(c.lights[0], albedo, N, V, metallic, roughness);
+    vec3 shadowNdc = shadowCoordinate.xyz / max(shadowCoordinate.w, 0.0001);
+    vec2 shadowUV = vec2(shadowNdc.x * 0.5 + 0.5, 0.5 - shadowNdc.y * 0.5);
+    float shadow = 1.0;
+    if (shadowUV.x >= 0.0 && shadowUV.x <= 1.0 &&
+        shadowUV.y >= 0.0 && shadowUV.y <= 1.0 &&
+        shadowNdc.z >= 0.0 && shadowNdc.z <= 1.0) {
+        float closestDepth = texture(shadowMap, shadowUV).r;
+        if (shadowNdc.z - 0.0025 > closestDepth) shadow = 0.28;
+    }
+    color += evaluateLight(c.lights[0], albedo, N, V, metallic, roughness) * shadow;
     color += evaluateLight(c.lights[1], albedo, N, V, metallic, roughness);
     color = color / (color + vec3(1.0));
     color = pow(color, vec3(1.0 / 2.2));
