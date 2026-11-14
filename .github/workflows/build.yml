@@ -89,54 +89,29 @@ jobs:
           python3 - <<'PY'
           p = "tools/freegnm-examples/shared/src/displayctx.c"
           s = open(p, encoding="utf-8").read()
-          old = """\tres = sceVideoOutSubmitFlip(
-          \t\tctx->videohandle, bufidx, ORBIS_VIDEO_OUT_FLIP_VSYNC, 0
-          \t);
-          \tif (res != 0) {
-          \t\tprintf("display: SubmitFlip failed with 0x%x\\n", res);
-          \t\treturn false;
-          \t}
-
-          \tOrbisKernelEvent ev = {0};
-          \tint out = 0;
-          \tres = sceKernelWaitEqueue(ctx->flipqueue, &ev, 1, &out, 0);
-          \tif (res != 0) {
-          \t\tprintf("display: WaitEqueue failed with 0x%x\\n", res);
-          \t\treturn false;
-          \t}"""
-          replacement = """\tres = sceVideoOutSubmitFlip(
-          \t\tctx->videohandle, bufidx, ORBIS_VIDEO_OUT_FLIP_VSYNC, 0
-          \t);
-          \tif (res != 0) {
-          \t\tprintf("display: SubmitFlip failed with 0x%x\\n", res);
-          \t\treturn false;
-          \t}
-
-          \tOrbisKernelEvent ev = {0};
-          \tint out = 0;
-          \tOrbisKernelUseconds timeout = 1000000;
-          \tres = sceKernelWaitEqueue(ctx->flipqueue, &ev, 1, &out, &timeout);
-          \tif (res != 0 || out != 1) {
-          \t\tprintf("display: WaitEqueue failed/timed out with 0x%x (events=%d)\\n", res, out);
-          \t\treturn false;
-          \t}"""
-          if old not in s:
-              raise SystemExit("displayctx_flip exact source block not found; refusing unsafe patch")
-          s = s.replace(old, replacement, 1)
-          old = "\tsceVideoOutSetFlipRate(ctx->videohandle, 0);\n\tsceVideoOutAddFlipEvent(ctx->flipqueue, ctx->videohandle, 0);"
-          replacement = """\tres = sceVideoOutSetFlipRate(ctx->videohandle, 0);
-          \tif (res != 0) {
-          \t\tprintf("display: SetFlipRate failed with 0x%x\\n", res);
-          \t\treturn false;
-          \t}
-          \tres = sceVideoOutAddFlipEvent(ctx->flipqueue, ctx->videohandle, 0);
-          \tif (res != 0) {
-          \t\tprintf("display: AddFlipEvent failed with 0x%x\\n", res);
-          \t\treturn false;
-          \t}"""
-          if old not in s:
-              raise SystemExit("displayctx_init event registration block not found; refusing unsafe patch")
-          s = s.replace(old, replacement, 1)
+          old = "res = sceKernelWaitEqueue(ctx->flipqueue, &ev, 1, &out, 0);"
+          new = "OrbisKernelUseconds timeout = 1000000;\\n\\tres = sceKernelWaitEqueue(ctx->flipqueue, &ev, 1, &out, &timeout);"
+          if s.count(old) != 1:
+              raise SystemExit("sceKernelWaitEqueue source signature changed; refusing patch")
+          s = s.replace(old, new, 1)
+          old = "\\tsceVideoOutSetFlipRate(ctx->videohandle, 0);"
+          new = """\\tres = sceVideoOutSetFlipRate(ctx->videohandle, 0);
+          \\tif (res != 0) {
+          \\t\\tprintf("display: SetFlipRate failed with 0x%x\\\\n", res);
+          \\t\\treturn false;
+          \\t}"""
+          if s.count(old) != 1:
+              raise SystemExit("sceVideoOutSetFlipRate source signature changed; refusing patch")
+          s = s.replace(old, new, 1)
+          old = "\\tsceVideoOutAddFlipEvent(ctx->flipqueue, ctx->videohandle, 0);"
+          new = """\\tres = sceVideoOutAddFlipEvent(ctx->flipqueue, ctx->videohandle, 0);
+          \\tif (res != 0) {
+          \\t\\tprintf("display: AddFlipEvent failed with 0x%x\\\\n", res);
+          \\t\\treturn false;
+          \\t}"""
+          if s.count(old) != 1:
+              raise SystemExit("sceVideoOutAddFlipEvent source signature changed; refusing patch")
+          s = s.replace(old, new, 1)
           open(p, "w", encoding="utf-8").write(s)
           PY
           grep -Fq 'OrbisKernelUseconds timeout = 1000000' tools/freegnm-examples/shared/src/displayctx.c
