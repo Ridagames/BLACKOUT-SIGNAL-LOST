@@ -137,6 +137,35 @@ bpy.context.object.data.energy = 34
 bpy.context.object.data.color = (1.0,0.025,0.008)
 bpy.context.object.data.shadow_soft_size = 1.2
 
+
+# Additional high-frequency environmental detail for a more grounded, lived-in space.
+for y in (-2.0, 3.7, 8.6, 13.1):
+    # Exposed ceiling support brackets and hanging cable bundles.
+    cube("Ceiling support crossbar", (0.0,y,3.02), (7.45,0.10,0.10), metal, 0.018)
+    for x in (-3.45,-3.18,3.18,3.45):
+        cylinder("Pipe clamp", (x,y,2.88), 0.075, 0.12, rust, (math.pi/2,0,0))
+for y in (2.2, 7.7, 12.4):
+    # Recessed wall service panels with layered metal lips and warning lamps.
+    for side in (-1,1):
+        x = side * 3.86
+        cube("Electrical service cabinet", (x,y,1.55), (0.055,0.78,1.05), metal, 0.025)
+        cube("Cabinet inset", (x-side*0.034,y,1.55), (0.018,0.62,0.86), black, 0.012)
+        for z in (1.25,1.42,1.59,1.76):
+            cube("Cabinet vent", (x-side*0.047,y,z), (0.012,0.40,0.025), rust, 0.004)
+# Bent conduits and a damaged ceiling panel add irregular silhouettes.
+for x in (-3.55,3.55):
+    for y in (-1.5,4.2,9.2,14.0):
+        cylinder("Vertical service conduit", (x,y,1.95), 0.035, 2.45, metal)
+cube("Collapsed ceiling panel", (-2.35,6.8,3.18), (1.45,1.15,0.055), concrete, 0.025)
+cube("Loose ceiling panel", (-1.75,7.15,2.94), (0.85,0.12,0.045), rust, 0.012)
+# A fire extinguisher and wall bracket provide scale and recognizable real-world detail.
+cylinder("Old fire extinguisher", (3.60,4.6,0.78), 0.16, 0.68, red)
+cylinder("Extinguisher neck", (3.60,4.6,1.16), 0.055, 0.12, metal)
+cube("Extinguisher bracket", (3.69,4.6,0.72), (0.08,0.38,0.12), metal, 0.02)
+# Wet floor patches: low, irregular reflective slabs rather than stylized puddle shapes.
+for loc, scale in [((-1.8,1.1,0.006),(1.4,0.8,0.008)),((1.0,6.0,0.007),(1.8,0.55,0.009)),((-0.2,11.7,0.006),(1.2,0.65,0.008))]:
+    cube("Thin water sheen", loc, scale, glass, 0.002)
+
 # Camera: low eye-level view, strong perspective into the corridor.
 bpy.ops.object.camera_add(location=(-0.2,-10.7,1.72))
 camera = bpy.context.object
@@ -162,8 +191,8 @@ cube("Atmospheric haze volume", (0,8,1.6), (7.5,18,3.0), fogmat)
 # Dark cinematic grade and restrained film grain-like roughness via compositor.
 scene = bpy.context.scene
 scene.render.engine = "BLENDER_EEVEE_NEXT" if bpy.app.version >= (4,2,0) else "BLENDER_EEVEE"
-scene.render.resolution_x = 1920
-scene.render.resolution_y = 1080
+scene.render.resolution_x = 960
+scene.render.resolution_y = 540
 scene.render.resolution_percentage = 100
 scene.render.image_settings.file_format = "PNG"
 scene.render.image_settings.color_mode = "RGB"
@@ -180,5 +209,34 @@ scene.camera.data.dof.aperture_fstop = 8.0
 scene.render.image_settings.compression = 20
 scene.render.film_transparent = False
 scene.camera.data.lens = 36
+scene.frame_start = 0
+scene.frame_end = 5
+scene.render.image_settings.file_format = "PNG"
+scene.render.image_settings.color_mode = "RGB"
+scene.render.image_settings.color_depth = "8"
+scene.render.image_settings.compression = 25
+
+# Six seamless ambient frames: gentle camera drift, volumetric haze drift and unstable fluorescents.
+base_camera = camera.location.copy()
+base_target = target.copy()
+lights = [obj for obj in scene.objects if obj.type == "LIGHT"]
+red_lights = [obj for obj in lights if obj.data.type == "POINT"]
+for frame in range(6):
+    phase = (frame / 6.0) * math.tau
+    camera.location = base_camera + Vector((0.045 * math.sin(phase), 0.025 * math.cos(phase), 0.018 * math.sin(phase*2.0)))
+    look_target = base_target + Vector((0.025 * math.sin(phase), 0.0, 0.012 * math.cos(phase)))
+    camera.rotation_euler = (look_target - camera.location).to_track_quat("-Z","Y").to_euler()
+    for index, light in enumerate(lights):
+        pulse = 0.90 + 0.10 * math.sin(phase * 2.0 + index * 1.7)
+        if index % 3 == frame % 3:
+            pulse *= 0.68
+        light.data.energy = max(8.0, light.data.energy * pulse)
+    for haze in [obj for obj in scene.objects if obj.name == "Atmospheric haze volume"]:
+        haze.location.x = 0.06 * math.sin(phase)
+        haze.location.y = 8.0 + 0.10 * math.cos(phase)
+    scene.frame_set(frame)
+    scene.render.filepath = output.rsplit(".",1)[0] + "_%02d.png" % frame
+    bpy.ops.render.render(write_still=True)
+
+# Keep the native scene file for future iteration and debugging.
 bpy.ops.wm.save_as_mainfile(filepath=output.rsplit("/",1)[0] + "/blackout_menu_scene.blend")
-bpy.ops.render.render(write_still=True)
