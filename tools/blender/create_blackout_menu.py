@@ -192,16 +192,21 @@ cube("Atmospheric haze volume", (0,8,1.6), (7.5,18,3.0), fogmat)
 import os
 scene = bpy.context.scene
 scene.render.engine = "BLENDER_EEVEE_NEXT" if bpy.app.version >= (4,2,0) else "BLENDER_EEVEE"
-scene.render.resolution_x = 960
-scene.render.resolution_y = 540
+scene.render.resolution_x = 1920
+scene.render.resolution_y = 1080
 scene.render.resolution_percentage = 100
-# Keep Eevee practical on CPU-only GitHub runners while preserving 24 fps motion.
+# High-quality Eevee render: full HD, temporal anti-aliasing and ray-traced reflections.
+# Keep ray tracing enabled where the installed Blender version exposes the setting.
 if hasattr(scene, "eevee") and hasattr(scene.eevee, "taa_render_samples"):
-    scene.eevee.taa_render_samples = 8
-if hasattr(scene, "eevee") and hasattr(scene.eevee, "use_volumetric_shadows"):
-    scene.eevee.use_volumetric_shadows = False
+    scene.eevee.taa_render_samples = 16
 if hasattr(scene, "eevee") and hasattr(scene.eevee, "use_raytracing"):
-    scene.eevee.use_raytracing = False
+    scene.eevee.use_raytracing = True
+if hasattr(scene, "eevee") and hasattr(scene.eevee, "use_volumetric_shadows"):
+    scene.eevee.use_volumetric_shadows = True
+if hasattr(scene, "eevee") and hasattr(scene.eevee, "volumetric_samples"):
+    scene.eevee.volumetric_samples = 32
+if hasattr(scene, "eevee") and hasattr(scene.eevee, "volumetric_tile_size"):
+    scene.eevee.volumetric_tile_size = "8"
 scene.render.fps = 24
 scene.render.fps_base = 1.0
 scene.world.color = (0.008,0.010,0.012)
