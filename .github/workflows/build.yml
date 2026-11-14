@@ -90,33 +90,15 @@ jobs:
           p = "tools/freegnm-examples/shared/src/displayctx.c"
           s = open(p, encoding="utf-8").read()
           old = "res = sceKernelWaitEqueue(ctx->flipqueue, &ev, 1, &out, 0);"
-          new = "OrbisKernelUseconds timeout = 1000000;\\n\\tres = sceKernelWaitEqueue(ctx->flipqueue, &ev, 1, &out, &timeout);"
+          new = "OrbisKernelUseconds timeout = 1000000;" + chr(10) + chr(9) + "res = sceKernelWaitEqueue(ctx->flipqueue, &ev, 1, &out, &timeout);"
           if s.count(old) != 1:
               raise SystemExit("sceKernelWaitEqueue source signature changed; refusing patch")
-          s = s.replace(old, new, 1)
-          old = "\\tsceVideoOutSetFlipRate(ctx->videohandle, 0);"
-          new = """\\tres = sceVideoOutSetFlipRate(ctx->videohandle, 0);
-          \\tif (res != 0) {
-          \\t\\tprintf("display: SetFlipRate failed with 0x%x\\\\n", res);
-          \\t\\treturn false;
-          \\t}"""
-          if s.count(old) != 1:
-              raise SystemExit("sceVideoOutSetFlipRate source signature changed; refusing patch")
-          s = s.replace(old, new, 1)
-          old = "\\tsceVideoOutAddFlipEvent(ctx->flipqueue, ctx->videohandle, 0);"
-          new = """\\tres = sceVideoOutAddFlipEvent(ctx->flipqueue, ctx->videohandle, 0);
-          \\tif (res != 0) {
-          \\t\\tprintf("display: AddFlipEvent failed with 0x%x\\\\n", res);
-          \\t\\treturn false;
-          \\t}"""
-          if s.count(old) != 1:
-              raise SystemExit("sceVideoOutAddFlipEvent source signature changed; refusing patch")
           s = s.replace(old, new, 1)
           open(p, "w", encoding="utf-8").write(s)
           PY
           grep -Fq 'OrbisKernelUseconds timeout = 1000000' tools/freegnm-examples/shared/src/displayctx.c
           grep -Fq '&timeout' tools/freegnm-examples/shared/src/displayctx.c
-          echo "VIDEOOUT FLIP TIMEOUT + EVENT REGISTRATION CHECKS OK"
+          echo "VIDEOOUT FLIP WAIT LIMITED TO 1 SECOND"
 
       - name: Compiler le compilateur de shaders PS4
         run: |
