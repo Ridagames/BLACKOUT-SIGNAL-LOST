@@ -59,13 +59,13 @@ typedef struct {
     void *shadowFetchMemory;
     ShadowConstants *shadowConstants;
     GnmBuffer shadowConstBuffer;
-    uint64_t *shadowBarrierLabel;
+    volatile uint64_t *shadowBarrierLabel;
     GnmCommandBuffer commandBuffer;
     GnmPsShader *uiPixelShader;
     GnmTexture uiTexture;
     GnmSampler uiSampler;
     uint8_t *uiTextureMemory;
-    uint64_t *gpuDoneLabel;
+    volatile uint64_t *gpuDoneLabel;
     gltfModel model;
     unsigned currentFrame;
     bool initialized;
@@ -423,6 +423,9 @@ bool GpuRenderer_Init(void)
         return false;
     }
 
+    *s_gpu.gpuDoneLabel = 0;
+    *s_gpu.shadowBarrierLabel = 0;
+
     s_gpu.currentFrame = 0;
     s_gpu.initialized = true;
     gpu_status("BLACKOUT_GNM_GPU_RENDERER_READY");
@@ -480,6 +483,7 @@ static void draw_menu_overlay(void)
 
 bool GpuRenderer_Render(const uint32_t *rgbaOverlay, int frameId)
 {
+    (void)frameId;
     if (!s_gpu.initialized || !rgbaOverlay) return false;
 
     memcpy(s_gpu.uiTextureMemory, rgbaOverlay, GPU_OVERLAY_BYTES);
@@ -552,13 +556,17 @@ bool GpuRenderer_Render(const uint32_t *rgbaOverlay, int frameId)
         return false;
     }
 
-    if (!displayctx_flip(&s_gpu.display, s_gpu.currentFrame)) {
-        gpu_status("GPU_FLIP_FAILED");
-        return false;
-    }
+    // Publier les ecritures GPU avant que VideoOut lise le framebuffer.
+    // SubmitDone doit etre signale avant la presentation, pas apres le flip.
+    sceGnmFlushGarlic();
     result = sceGnmSubmitDone();
     if (result != 0) {
         gpu_status("GPU_SUBMIT_DONE_FAILED");
+        return false;
+    }
+
+    if (!displayctx_flip(&s_gpu.display, s_gpu.currentFrame)) {
+        gpu_status("GPU_FLIP_FAILED");
         return false;
     }
 
