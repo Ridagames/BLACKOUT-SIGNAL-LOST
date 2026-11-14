@@ -316,9 +316,15 @@ int main()
         for (;;) sceKernelUsleep(1000000);
     }
 
-    PNG background("/app0/USRDIR/BLACKOUT_MENU.png");
-    if (!background.IsLoaded())
-        write_status("BLACKOUT_MENU_IMAGE_LOAD_FAILED");
+    PNG background0("/app0/USRDIR/BLACKOUT_MENU_00.png");
+    PNG background1("/app0/USRDIR/BLACKOUT_MENU_01.png");
+    PNG background2("/app0/USRDIR/BLACKOUT_MENU_02.png");
+    PNG background3("/app0/USRDIR/BLACKOUT_MENU_03.png");
+    PNG background4("/app0/USRDIR/BLACKOUT_MENU_04.png");
+    PNG background5("/app0/USRDIR/BLACKOUT_MENU_05.png");
+    PNG *backgrounds[6] = {&background0, &background1, &background2, &background3, &background4, &background5};
+    if (!background0.IsLoaded())
+        write_status("BLACKOUT_MENU_ANIMATION_LOAD_FAILED");
 
     // Initialisation et ouverture reprises du flux de controleur de PS MTP Explorer.
     const int padInit = scePadInit();
@@ -414,9 +420,10 @@ int main()
             }
         }
 
-        if (frameId == 0 || changed || (diagnosticTicks % 15) == 0) {
+        if (frameId == 0 || changed || (diagnosticTicks % 4) == 0) {
             scene.SetActiveFrameBuffer(frameId % 2);
-            render(scene, background, frameId++);
+            const int animationFrame = (frameId / 8) % 6;
+            render(scene, *backgrounds[animationFrame], frameId++);
         }
         sceKernelUsleep(16000);
     }
