@@ -176,14 +176,27 @@ static unsigned int pollPressed(int pad, OrbisPadData &state)
     std::memset(&state, 0, sizeof(state));
     if (pad < 0) {
         lastPadReadResult = -1;
+        lastPadButtons = 0;
         previousButtons = 0;
         return 0;
     }
 
-    lastPadReadResult = scePadReadState(pad, &state);
+    // Lecture principale : scePadRead retourne l'etat complet du DualShock,
+    // boutons ET sticks. Certaines versions du firmware gerent moins bien
+    // scePadReadState : on ne l'utilise qu'en secours.
+    lastPadReadResult = scePadRead(pad, &state, 1);
     if (lastPadReadResult != 0) {
-        previousButtons = 0;
-        return 0;
+        OrbisPadData buttonState = {};
+        const int fallbackResult = scePadReadState(pad, &buttonState);
+        if (fallbackResult == 0) {
+            state.buttons = buttonState.buttons;
+            state.connected = buttonState.connected;
+            lastPadReadResult = 0;
+        } else {
+            lastPadButtons = 0;
+            previousButtons = 0;
+            return 0;
+        }
     }
 
     const unsigned int menuMask =
@@ -195,17 +208,9 @@ static unsigned int pollPressed(int pad, OrbisPadData &state)
     previousButtons = current;
     lastPadButtons = (int)state.buttons;
 
-    // scePadReadState fournit les boutons. scePadRead fournit les axes analogiques.
-    // On ne consulte les sticks que si la lecture complete a reussi et que le pad est connecte.
-    OrbisPadData analogState = {};
-    const int analogResult = scePadRead(pad, &analogState, 1);
-    if (analogResult == 0 && analogState.connected) {
-        state.leftStick = analogState.leftStick;
-    }
-
     // Secours analogique : les sticks PS4 sont centres autour de 128.
     // Une zone morte evite les mouvements fantomes au repos.
-    if (pressed == 0 && analogResult == 0 && analogState.connected) {
+    if (pressed == 0) {
         const int y = (int)state.leftStick.y - 128;
         const int x = (int)state.leftStick.x - 128;
         if (y < -48) {
@@ -264,7 +269,7 @@ int main()
     } else {
         write_status("BLACKOUT_PAD_CONNECTED");
         OrbisPadData initial = {};
-        if (scePadReadState(pad, &initial) == 0)
+        if (scePadRead(pad, &initial, 1) == 0)
             previousButtons = initial.buttons & (ORBIS_PAD_BUTTON_UP | ORBIS_PAD_BUTTON_DOWN |
                 ORBIS_PAD_BUTTON_LEFT | ORBIS_PAD_BUTTON_RIGHT |
                 ORBIS_PAD_BUTTON_CROSS | ORBIS_PAD_BUTTON_CIRCLE);
