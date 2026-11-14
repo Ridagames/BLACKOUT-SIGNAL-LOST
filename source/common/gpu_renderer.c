@@ -526,9 +526,11 @@ bool GpuRenderer_Render(const uint32_t *rgbaOverlay, int frameId)
     );
     draw_menu_overlay();
 
+    // Meme sequence que l'exemple officiel freegnm-examples :
+    // le DCB termine avec une ecriture de fence GPU valeur 2.
     gnmDrawCmdEventWriteEop(
-        &s_gpu.commandBuffer, GNM_CACHE_FLUSH_AND_INV_TS_EVENT,
-        (uint64_t)s_gpu.gpuDoneLabel, GNM_DATA_SEL_SEND_DATA64, 1
+        &s_gpu.commandBuffer, GNM_CACHE_FLUSH_TS,
+        (uint64_t)s_gpu.gpuDoneLabel, GNM_DATA_SEL_SEND_DATA64, 2
     );
 
     void *dcbAddress = s_gpu.commandBuffer.beginptr;
@@ -544,29 +546,28 @@ bool GpuRenderer_Render(const uint32_t *rgbaOverlay, int frameId)
         return false;
     }
 
-    // Une fence GPU qui ne revient jamais ne doit pas figer le homebrew.
-    // 20 000 x 100 us = environ 2 secondes maximum avant le mode de secours.
+    // Attendre la fin GPU avant de presenter le framebuffer a VideoOut.
+    // Limite de securite : environ 2 secondes, sans boucle infinie.
     int fenceWait = 0;
-    while (*s_gpu.gpuDoneLabel != 1 && fenceWait < 20000) {
+    while (*s_gpu.gpuDoneLabel != 2 && fenceWait < 20000) {
         sceKernelUsleep(100);
         ++fenceWait;
     }
-    if (*s_gpu.gpuDoneLabel != 1) {
+    if (*s_gpu.gpuDoneLabel != 2) {
         gpu_status("GPU_FENCE_TIMEOUT");
         return false;
     }
 
-    // Publier les ecritures GPU avant que VideoOut lise le framebuffer.
-    // SubmitDone doit etre signale avant la presentation, pas apres le flip.
-    sceGnmFlushGarlic();
-    result = sceGnmSubmitDone();
-    if (result != 0) {
-        gpu_status("GPU_SUBMIT_DONE_FAILED");
+    // Ordre de presentation identique a l'exemple PS4-OpenGNM :
+    // SubmitCommandBuffers -> fence GPU -> flip VideoOut -> SubmitDone.
+    if (!displayctx_flip(&s_gpu.display, s_gpu.currentFrame)) {
+        gpu_status("GPU_FLIP_FAILED");
         return false;
     }
 
-    if (!displayctx_flip(&s_gpu.display, s_gpu.currentFrame)) {
-        gpu_status("GPU_FLIP_FAILED");
+    result = sceGnmSubmitDone();
+    if (result != 0) {
+        gpu_status("GPU_SUBMIT_DONE_FAILED");
         return false;
     }
 
