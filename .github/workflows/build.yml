@@ -22,21 +22,20 @@ jobs:
         run: |
           set -eu
           apt-get update
-          apt-get install -y imagemagick blender xvfb libgl1-mesa-dri
+          apt-get install -y imagemagick blender xvfb libgl1-mesa-dri ffmpeg
           convert -version
           blender --version
 
-      - name: Générer le décor 3D du menu BLACKOUT
+      - name: Générer le décor vidéo 3D du menu BLACKOUT
         run: |
           set -eu
           mkdir -p assets/USRDIR
-          xvfb-run -a blender -b --python tools/blender/create_blackout_menu.py -- assets/USRDIR/BLACKOUT_MENU.png
-          for frame in 00 01 02 03 04 05; do
-            test -s "assets/USRDIR/BLACKOUT_MENU_${frame}.png"
-            test "$(identify -format '%wx%h' "assets/USRDIR/BLACKOUT_MENU_${frame}.png")" = "960x540"
-          done
-          cp assets/USRDIR/BLACKOUT_MENU_00.png assets/USRDIR/BLACKOUT_MENU.png
+          xvfb-run -a blender -b --python tools/blender/create_blackout_menu.py -- assets/USRDIR/BLACKOUT_MENU.mp4
+          test -s assets/USRDIR/BLACKOUT_MENU.mp4
+          test -s assets/USRDIR/BLACKOUT_MENU.png
           identify -format '%m %wx%h\\n' assets/USRDIR/BLACKOUT_MENU.png
+          ffprobe -v error -select_streams v:0 -show_entries stream=codec_name,width,height,r_frame_rate -of csv=p=0 assets/USRDIR/BLACKOUT_MENU.mp4 | tee /tmp/menu-video-info.txt
+          grep -q '^h264,1280,720,24/1$' /tmp/menu-video-info.txt
 
       - name: Récupérer create-fself officiel
         uses: actions/checkout@v4
@@ -81,17 +80,22 @@ jobs:
           check_file Makefile
           check_file source/main.cpp
           check_file assets/USRDIR/BLACKOUT_MENU.png
-          for frame in 00 01 02 03 04 05; do check_file "assets/USRDIR/BLACKOUT_MENU_${frame}.png"; done
           check_file tools/blender/create_blackout_menu.py
           check_file sce_sys/ICON0.PNG
           check_file source/common/graphics.cpp
           check_file source/common/png.cpp
           check_text Makefile "DIAGNOSTIC_BUILD"
           check_text source/main.cpp "BLACKOUT_MENU_STARTING"
-          check_text source/main.cpp "BLACKOUT_MENU_ANIMATION_LOAD_FAILED"
+          check_text source/main.cpp "BLACKOUT_MENU_MP4_READY"
+          check_file source/common/video_player.cpp
+          check_file source/common/video_player.h
+          check_file source/common/orbis_avplayer.h
+          check_text source/common/video_player.cpp "sceAvPlayerSetLooping"
+          check_text source/common/graphics.cpp "DrawARGBScaled"
           check_text Makefile "create-fself"
           check_text Makefile "-lSceVideoOut"
           check_text Makefile "-lScePad"
+          check_text Makefile "-lSceAvPlayer"
           check_text Makefile "sce_module/libc.prx"
           check_text Makefile "sce_module/libSceFios2.prx"
           check_text Makefile "create-gp4"
@@ -107,6 +111,8 @@ jobs:
           test -s /lib/OpenOrbisSDK/bin/data/modules/libSceFios2.prx
           test -s source/common/graphics.cpp
           test -s source/common/png.cpp
+          test -s source/common/video_player.cpp
+          test -s assets/USRDIR/BLACKOUT_MENU.mp4
           test -f /lib/OpenOrbisSDK/include/stb/stb_image.h
           echo "===== OPENORBIS PRX MODULES ====="
           ls -lh /lib/OpenOrbisSDK/bin/data/modules/libc.prx /lib/OpenOrbisSDK/bin/data/modules/libSceFios2.prx
@@ -127,7 +133,8 @@ jobs:
           test -s sce_sys/icon0.png
           test -s build/pkg/sce_module/libc.prx
           test -s build/pkg/sce_module/libSceFios2.prx
-          for frame in 00 01 02 03 04 05; do test -s "build/pkg/USRDIR/BLACKOUT_MENU_${frame}.png"; done
+          test -s build/pkg/USRDIR/BLACKOUT_MENU.mp4
+          test -s build/pkg/USRDIR/BLACKOUT_MENU.png
           PKG="IV0000-BLSG00001_00-0000000000000001.pkg"
           test -s "$PKG"
           od -An -N4 -tx1 eboot.bin | grep -q "4f 15 3d 1d"
