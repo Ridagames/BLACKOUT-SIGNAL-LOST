@@ -50,6 +50,20 @@ jobs:
           ref: b9b570b78d58ceecc704f7a4e19b84dc45937ef4
           path: tools/cglm
 
+      - name: Recuperer SPIRV-Headers pour le compilateur PS4
+        uses: actions/checkout@v4
+        with:
+          repository: KhronosGroup/SPIRV-Headers
+          ref: 5c6004e758e0c80185ef2cee93ae5c10fa342a5b
+          path: tools/SPIRV-Headers
+
+      - name: Recuperer Vulkan-Headers pour Mesa ACO
+        uses: actions/checkout@v4
+        with:
+          repository: KhronosGroup/Vulkan-Headers
+          ref: b26454f3ccd67e704117a39295fa13935fd3804c
+          path: tools/Vulkan-Headers
+
       - name: Recuperer le compilateur de shaders PS4
         uses: actions/checkout@v4
         with:
@@ -68,6 +82,20 @@ jobs:
       - name: Compiler le compilateur de shaders PS4
         run: |
           set -eu
+          cat > tools/opengnm-psbc/config.mak <<'EOF'
+          DESTDIR=/usr/local
+          BINDIR=/bin
+          CC=clang
+          CXX=clang++
+          LD=clang++
+          AR=ar
+          PYTHON=python3
+          OPENGNM_INCLUDE=../opengnm/include
+          SHARED_FLAGS=-Iinclude -Ilibpsbc -I$(OPENGNM_INCLUDE) -I../Vulkan-Headers/include -I../SPIRV-Headers/include -Isrc -Isrc/amd -Isrc/amd/common -Isrc/amd/common/nir -Isrc/amd/compiler -Isrc/amd/vulkan -Isrc/amd/vulkan/nir -Isrc/vulkan/runtime -Isrc/vulkan/runtime/bvh -Isrc/vulkan/util -Isrc/compiler -Isrc/compiler/nir -Isrc/compiler/spirv -Isrc/gallium/include -Isrc/mesa -Isrc/mesa/main -Isrc/util -Icmd/psbc -Iinclude/mesa -Iopenorbis-compat/include -D_XOPEN_SOURCE=500 -DUTIL_ARCH_LITTLE_ENDIAN=1 -DUTIL_ARCH_BIG_ENDIAN=0 -DHAVE_STRUCT_TIMESPEC=1 -DHAVE_PTHREAD=1 -Dalloca=__builtin_alloca -DHAVE_SYSCONF=1
+          CFLAGS=-std=gnu11 -Wall -O2 -g $(SHARED_FLAGS) -Wno-unused-function -Wno-unused-variable -include strings.h
+          CXXFLAGS=-std=c++17 -Wall -O2 -g $(SHARED_FLAGS) -Wno-unused-function -Wno-unused-variable -include strings.h
+          LDFLAGS=-lm -pthread
+          EOF
           make -C tools/opengnm-psbc -j2
           test -x tools/opengnm-psbc/opengnm-psbc
           tools/opengnm-psbc/opengnm-psbc --help
