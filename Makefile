@@ -12,6 +12,10 @@ INTDIR := $(PROJDIR)/x64/Debug
 STAGE := build/pkg
 DIAGNOSTIC_BUILD := 0
 MENU_MODEL := assets/MODELS/NEXUS9_MENU.OBJ
+GPU_MODEL_DIR := build/gpu-model
+GPU_MODEL := $(GPU_MODEL_DIR)/NEXUS9_MENU.gltf
+GPU_MODEL_BIN := $(GPU_MODEL_DIR)/NEXUS9_MENU.bin
+GPU_SHADERS := assets/SHADERS/nexus9.vert.sb assets/SHADERS/nexus9.frag.sb assets/SHADERS/clear.frag.sb assets/SHADERS/nexus9_ui.frag.sb
 
 # OpenOrbis runtime modules supplied by the SDK.
 MODULE_SOURCE := $(TOOLCHAIN)/bin/data/modules
@@ -95,14 +99,17 @@ sce_sys/param.sfo: Makefile
 pkg.gp4: eboot.bin sce_sys/param.sfo sce_sys/icon0.png $(MENU_MODEL) $(LIBC_PRX) $(FIOS_PRX)
 	test -x $(CREATE_GP4)
 	rm -rf $(STAGE)
-	mkdir -p $(STAGE)/sce_sys $(STAGE)/sce_module $(STAGE)/USRDIR/MODELS
+	mkdir -p $(STAGE)/sce_sys $(STAGE)/sce_module $(STAGE)/USRDIR/MODELS $(STAGE)/USRDIR/SHADERS
 	cp eboot.bin $(STAGE)/eboot.bin
 	cp sce_sys/param.sfo $(STAGE)/sce_sys/param.sfo
 	cp sce_sys/icon0.png $(STAGE)/sce_sys/icon0.png
 	cp $(MENU_MODEL) $(STAGE)/USRDIR/MODELS/NEXUS9_MENU.OBJ
+	cp $(GPU_MODEL) $(STAGE)/USRDIR/MODELS/NEXUS9_MENU.gltf
+	cp $(GPU_MODEL_BIN) $(STAGE)/USRDIR/MODELS/NEXUS9_MENU.bin
+	cp $(GPU_SHADERS) $(STAGE)/USRDIR/SHADERS/
 	cp $(LIBC_PRX) $(STAGE)/sce_module/libc.prx
 	cp $(FIOS_PRX) $(STAGE)/sce_module/libSceFios2.prx
-	cd $(STAGE) && $(CREATE_GP4) -out pkg.gp4 --content-id=$(CONTENT_ID) --files "eboot.bin sce_sys/param.sfo sce_sys/icon0.png sce_module/libc.prx sce_module/libSceFios2.prx USRDIR/MODELS/NEXUS9_MENU.OBJ"
+	cd $(STAGE) && $(CREATE_GP4) -out pkg.gp4 --content-id=$(CONTENT_ID) --files "eboot.bin sce_sys/param.sfo sce_sys/icon0.png sce_module/libc.prx sce_module/libSceFios2.prx USRDIR/MODELS/NEXUS9_MENU.OBJ USRDIR/MODELS/NEXUS9_MENU.gltf USRDIR/MODELS/NEXUS9_MENU.bin USRDIR/SHADERS/nexus9.vert.sb USRDIR/SHADERS/nexus9.frag.sb USRDIR/SHADERS/clear.frag.sb USRDIR/SHADERS/nexus9_ui.frag.sb"
 	cp $(STAGE)/pkg.gp4 pkg.gp4
 
 $(CONTENT_ID).pkg: pkg.gp4
