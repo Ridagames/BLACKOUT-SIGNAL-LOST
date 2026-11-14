@@ -125,11 +125,57 @@ jobs:
           python3 tools/opengnm-psbc/src/amd/packets/parse_cp_pm4_table_data_json.py tools/opengnm-psbc/src/amd/packets/cp_pm4_table_data_gfx11.json tools/opengnm-psbc/src/amd/packets/pm4_it_opcodes_gfx11.h tools/opengnm-psbc/src/amd/packets/cp_pm4_table_data_gfx12.json tools/opengnm-psbc/src/amd/packets/pm4_it_opcodes_gfx12.h gfx12 packets_h > tools/opengnm-psbc/src/amd/common/amd_cp_packets_gfx12.h
           test -s tools/opengnm-psbc/src/amd/common/amd_cp_packets_gfx11.h
           test -s tools/opengnm-psbc/src/amd/common/amd_cp_packets_gfx12.h
-          # Generate Mesa NIR and AMD ACO source files BEFORE make evaluates wildcard source lists.
+          # Generate Mesa format conversion tables and AMD GFX10/GFX11 format mappings.
+          python3 tools/opengnm-psbc/src/util/format_srgb.py > tools/opengnm-psbc/src/util/format_srgb.c
+          python3 tools/opengnm-psbc/src/amd/common/gfx10_format_table.py tools/opengnm-psbc/src/util/format/u_format.yaml tools/opengnm-psbc/src/amd/registers/gfx10.json tools/opengnm-psbc/src/amd/registers/gfx11.json > tools/opengnm-psbc/src/amd/common/gfx10_format_table.c
+          test -s tools/opengnm-psbc/src/util/format_srgb.c
+          test -s tools/opengnm-psbc/src/amd/common/gfx10_format_table.c
+
+          # Keep BLAKE3's complete x86-64 runtime-dispatch implementation:
+          # compile its four upstream Unix assembly backends into libpsbc.a.
+          python3 - <<'PY'
+          p = "tools/opengnm-psbc/Makefile"
+          s = open(p, encoding="utf-8").read()
+          anchor = "BLAKE3_OBJS = $(BLAKE3_SRCS:.c=.o)\n"
+          addition = """BLAKE3_ASM_SRCS = \\
+          \tsrc/util/blake3/blake3_sse2_x86-64_unix.S \\
+          \tsrc/util/blake3/blake3_sse41_x86-64_unix.S \\
+          \tsrc/util/blake3/blake3_avx2_x86-64_unix.S \\
+          \tsrc/util/blake3/blake3_avx512_x86-64_unix.S
+          BLAKE3_ASM_OBJS = $(BLAKE3_ASM_SRCS:.S=.o)
+          """
+          if anchor not in s:
+              raise SystemExit("BLAKE3 object-list insertion point not found")
+          s = s.replace(anchor, anchor + addition, 1)
+          anchor = "\t$(BLAKE3_OBJS) \\\n"
+          if anchor not in s:
+              raise SystemExit("BLAKE3 archive insertion point not found")
+          s = s.replace(anchor, anchor + "\t$(BLAKE3_ASM_OBJS) \\\n", 1)
+          anchor = "%.cpp.o: %.cpp | $(GENERATED)\n"
+          rule = "%.o: %.S | $(GENERATED)\n\t$(CC) $(CFLAGS) -c $< -o $@\n\n"
+          if anchor not in s:
+              raise SystemExit("assembly compile rule insertion point not found")
+          s = s.replace(anchor, rule + anchor, 1)
+          open(p, "w", encoding="utf-8").write(s)
+          PY
+          grep -Fq 'blake3_avx512_x86-64_unix.S' tools/opengnm-psbc/Makefile
+
+          # Generate the complete Mesa/ACO codegen set before Make snapshots wildcard sources.
           make -C tools/opengnm-psbc generated
           test -s tools/opengnm-psbc/src/compiler/nir/nir_intrinsics.c
+          test -s tools/opengnm-psbc/src/compiler/nir/nir_intrinsics.h
           test -s tools/opengnm-psbc/src/compiler/nir/nir_opcodes.c
+          test -s tools/opengnm-psbc/src/compiler/nir/nir_opcodes.h
+          test -s tools/opengnm-psbc/src/compiler/nir/nir_constant_expressions.c
+          test -s tools/opengnm-psbc/src/compiler/nir/nir_opt_algebraic.c
+          test -s tools/opengnm-psbc/src/compiler/spirv/spirv_info.c
+          test -s tools/opengnm-psbc/src/compiler/spirv/spirv_info.h
+          test -s tools/opengnm-psbc/src/compiler/spirv/vtn_gather_types.c
           test -s tools/opengnm-psbc/src/amd/compiler/aco_opcodes.cpp
+          test -s tools/opengnm-psbc/src/amd/compiler/aco_opcodes.h
+          test -s tools/opengnm-psbc/src/amd/compiler/aco_builder.h
+          test -s tools/opengnm-psbc/src/amd/common/amdgfxregs.h
+          test -s tools/opengnm-psbc/src/amd/common/sid_tables.h
           make -C tools/opengnm-psbc -j2
           test -x tools/opengnm-psbc/opengnm-psbc
           tools/opengnm-psbc/opengnm-psbc --help
