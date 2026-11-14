@@ -152,7 +152,7 @@ jobs:
               raise SystemExit("BLAKE3 archive insertion point not found")
           s = s.replace(anchor, anchor + "\t$(BLAKE3_ASM_OBJS) \\\n", 1)
           anchor = "%.cpp.o: %.cpp | $(GENERATED)\n"
-          rule = "%.o: %.S | $(GENERATED)\n\t$(CC) $(CFLAGS) -c $< -o $@\n\n"
+          rule = "%.o: %.S | $(GENERATED)\n\t$(CC) $(filter-out -include strings.h,$(CFLAGS)) -c $< -o $@\n\n"
           if anchor not in s:
               raise SystemExit("assembly compile rule insertion point not found")
           s = s.replace(anchor, rule + anchor, 1)
