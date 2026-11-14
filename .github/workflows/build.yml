@@ -47,6 +47,66 @@ jobs:
           ref: ffd055563e5b849ebef1b276ba29e730199670f8
           path: tools/freegnm-examples
 
+      - name: Securiser la synchronisation VideoOut
+        run: |
+          set -eu
+          python3 - <<'PY'
+          p = "tools/freegnm-examples/shared/src/displayctx.c"
+          s = open(p, encoding="utf-8").read()
+          old = """\tres = sceVideoOutSubmitFlip(
+          \t\tctx->videohandle, bufidx, ORBIS_VIDEO_OUT_FLIP_VSYNC, 0
+          \t);
+          \tif (res != 0) {
+          \t\tprintf("display: SubmitFlip failed with 0x%x\\n", res);
+          \t\treturn false;
+          \t}
+
+          \tOrbisKernelEvent ev = {0};
+          \tint out = 0;
+          \tres = sceKernelWaitEqueue(ctx->flipqueue, &ev, 1, &out, 0);
+          \tif (res != 0) {
+          \t\tprintf("display: WaitEqueue failed with 0x%x\\n", res);
+          \t\treturn false;
+          \t}"""
+          replacement = """\tres = sceVideoOutSubmitFlip(
+          \t\tctx->videohandle, bufidx, ORBIS_VIDEO_OUT_FLIP_VSYNC, 0
+          \t);
+          \tif (res != 0) {
+          \t\tprintf("display: SubmitFlip failed with 0x%x\\n", res);
+          \t\treturn false;
+          \t}
+
+          \tOrbisKernelEvent ev = {0};
+          \tint out = 0;
+          \tOrbisKernelUseconds timeout = 1000000;
+          \tres = sceKernelWaitEqueue(ctx->flipqueue, &ev, 1, &out, &timeout);
+          \tif (res != 0 || out != 1) {
+          \t\tprintf("display: WaitEqueue failed/timed out with 0x%x (events=%d)\\n", res, out);
+          \t\treturn false;
+          \t}"""
+          if old not in s:
+              raise SystemExit("displayctx_flip exact source block not found; refusing unsafe patch")
+          s = s.replace(old, replacement, 1)
+          old = "\tsceVideoOutSetFlipRate(ctx->videohandle, 0);\n\tsceVideoOutAddFlipEvent(ctx->flipqueue, ctx->videohandle, 0);"
+          replacement = """\tres = sceVideoOutSetFlipRate(ctx->videohandle, 0);
+          \tif (res != 0) {
+          \t\tprintf("display: SetFlipRate failed with 0x%x\\n", res);
+          \t\treturn false;
+          \t}
+          \tres = sceVideoOutAddFlipEvent(ctx->flipqueue, ctx->videohandle, 0);
+          \tif (res != 0) {
+          \t\tprintf("display: AddFlipEvent failed with 0x%x\\n", res);
+          \t\treturn false;
+          \t}"""
+          if old not in s:
+              raise SystemExit("displayctx_init event registration block not found; refusing unsafe patch")
+          s = s.replace(old, replacement, 1)
+          open(p, "w", encoding="utf-8").write(s)
+          PY
+          grep -Fq 'OrbisKernelUseconds timeout = 1000000' tools/freegnm-examples/shared/src/displayctx.c
+          grep -Fq '&timeout' tools/freegnm-examples/shared/src/displayctx.c
+          echo "VIDEOOUT FLIP TIMEOUT + EVENT REGISTRATION CHECKS OK"
+
       - name: Recuperer cglm pour les matrices 3D
         uses: actions/checkout@v4
         with:
