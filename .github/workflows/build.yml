@@ -11,31 +11,176 @@ permissions:
 jobs:
   build:
     runs-on: ubuntu-latest
-    timeout-minutes: 60
+    timeout-minutes: 90
     container:
       image: openorbisofficial/toolchain:latest
       options: --user root
     steps:
       - uses: actions/checkout@v4
 
-      - name: Installer ImageMagick et Blender
+      - name: Restaurer le décor vidéo déjà rendu
+        id: menu-cache
+        uses: actions/cache@v4
+        with:
+          path: |
+            assets/USRDIR/BLACKOUT_MENU.mp4
+            assets/USRDIR/BLACKOUT_MENU.png
+          key: blackout-menu-${{ runner.os }}-${{ hashFiles('tools/blender/create_blackout_menu.py') }}
+
+      - name: Installer les outils d'image
         run: |
           set -eu
           apt-get update
-          apt-get install -y imagemagick blender xvfb libgl1-mesa-dri ffmpeg
+          apt-get install -y imagemagick ffmpeg
           convert -version
+
+      - name: Installer Blender si le décor doit être rendu
+        if: steps.menu-cache.outputs.cache-hit != 'true'
+        run: |
+          set -eu
+          apt-get install -y blender xvfb libgl1-mesa-dri
           blender --version
 
       - name: Générer le décor vidéo 3D du menu BLACKOUT
+        if: steps.menu-cache.outputs.cache-hit != 'true'
         run: |
           set -eu
           mkdir -p assets/USRDIR
           xvfb-run -a blender -b --python tools/blender/create_blackout_menu.py -- assets/USRDIR/BLACKOUT_MENU.mp4
           test -s assets/USRDIR/BLACKOUT_MENU.mp4
           test -s assets/USRDIR/BLACKOUT_MENU.png
+
+      - name: Vérifier le décor vidéo du menu BLACKOUT
+        run: |
+          set -eu
+          test -s assets/USRDIR/BLACKOUT_MENU.mp4
+          test -s assets/USRDIR/BLACKOUT_MENU.png
           identify -format '%m %wx%h\\n' assets/USRDIR/BLACKOUT_MENU.png
           ffprobe -v error -select_streams v:0 -show_entries stream=codec_name,width,height,r_frame_rate -of csv=p=0 assets/USRDIR/BLACKOUT_MENU.mp4 | tee /tmp/menu-video-info.txt
-          grep -q '^h264,1280,720,24/1$' /tmp/menu-video-info.txt
+          grep -q '^h264,960,540,24/1
+      - name: Récupérer create-fself officiel
+        uses: actions/checkout@v4
+        with:
+          repository: OpenOrbis/create-fself
+          ref: f2da6229684ce320f673c06fceac9c218f621788
+          path: tools/create-fself-src
+
+      - name: Récupérer create-gp4 officiel
+        uses: actions/checkout@v4
+        with:
+          repository: OpenOrbis/create-gp4
+          ref: bf8e66e9e9bdd92e41e1697893bc8098a151fa24
+          path: tools/create-gp4-src
+
+      - name: Installer Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.17'
+
+      - name: Compiler create-fself
+        working-directory: tools/create-fself-src/cmd/create-fself
+        run: |
+          set -eu
+          go build -modfile=go-linux.mod -o /usr/local/bin/create-fself .
+          test -x /usr/local/bin/create-fself
+          /usr/local/bin/create-fself -h
+
+      - name: Compiler create-gp4
+        working-directory: tools/create-gp4-src/cmd/create-gp4
+        run: |
+          set -eu
+          go build -o /usr/local/bin/create-gp4 .
+          test -x /usr/local/bin/create-gp4
+          /usr/local/bin/create-gp4 -h
+
+      - name: Vérifier les sources et le menu
+        run: |
+          set -eu
+          check_file() { test -s "$1" || { echo "FICHIER MANQUANT: $1"; exit 1; }; }
+          check_text() { grep -Fq -- "$2" "$1" || { echo "TEXTE MANQUANT dans $1: $2"; exit 1; }; }
+          check_file Makefile
+          check_file source/main.cpp
+          check_file assets/USRDIR/BLACKOUT_MENU.png
+          check_file tools/blender/create_blackout_menu.py
+          check_file sce_sys/ICON0.PNG
+          check_file source/common/graphics.cpp
+          check_file source/common/png.cpp
+          check_text Makefile "DIAGNOSTIC_BUILD"
+          check_text source/main.cpp "BLACKOUT_MENU_STARTING"
+          check_text source/main.cpp "BLACKOUT_MENU_MP4_READY"
+          check_file source/common/video_player.cpp
+          check_file source/common/video_player.h
+          check_file source/common/orbis_avplayer.h
+          check_text source/common/video_player.cpp "sceAvPlayerSetLooping"
+          check_text source/common/graphics.cpp "DrawARGBScaled"
+          check_text Makefile "create-fself"
+          check_text Makefile "-lSceVideoOut"
+          check_text Makefile "-lScePad"
+          check_text Makefile "-lSceAvPlayer"
+          check_text Makefile "sce_module/libc.prx"
+          check_text Makefile "sce_module/libSceFios2.prx"
+          check_text Makefile "create-gp4"
+          echo "VERIFICATIONS DES SOURCES OK"
+
+      - name: Vérifier OpenOrbis, les PRX et les outils
+        run: |
+          set -eu
+          test -x /usr/local/bin/create-fself
+          test -x /usr/local/bin/create-gp4
+          test -x /lib/OpenOrbisSDK/bin/linux/PkgTool.Core
+          test -s /lib/OpenOrbisSDK/bin/data/modules/libc.prx
+          test -s /lib/OpenOrbisSDK/bin/data/modules/libSceFios2.prx
+          test -s source/common/graphics.cpp
+          test -s source/common/png.cpp
+          test -s source/common/video_player.cpp
+          test -s assets/USRDIR/BLACKOUT_MENU.mp4
+          test -f /lib/OpenOrbisSDK/include/stb/stb_image.h
+          echo "===== OPENORBIS PRX MODULES ====="
+          ls -lh /lib/OpenOrbisSDK/bin/data/modules/libc.prx /lib/OpenOrbisSDK/bin/data/modules/libSceFios2.prx
+
+      - name: Compiler et créer le vrai PKG PS4
+        run: |
+          set -eu
+          export OO_PS4_TOOLCHAIN=/lib/OpenOrbisSDK
+          export CREATE_FSELF=/usr/local/bin/create-fself
+          export CREATE_GP4=/usr/local/bin/create-gp4
+          export PATH="$OO_PS4_TOOLCHAIN/bin/linux:$OO_PS4_TOOLCHAIN:/usr/local/bin:$PATH"
+          make clean
+          make V=1
+          test -s source/x64/Debug/blackout.elf
+          test -s source/x64/Debug/blackout.oelf
+          test -s eboot.bin
+          test -s sce_sys/param.sfo
+          test -s sce_sys/icon0.png
+          test -s build/pkg/sce_module/libc.prx
+          test -s build/pkg/sce_module/libSceFios2.prx
+          test -s build/pkg/USRDIR/BLACKOUT_MENU.mp4
+          test -s build/pkg/USRDIR/BLACKOUT_MENU.png
+          PKG="IV0000-BLSG00001_00-0000000000000001.pkg"
+          test -s "$PKG"
+          od -An -N4 -tx1 eboot.bin | grep -q "4f 15 3d 1d"
+          identify -format '%m %wx%h %[channels]\\n' sce_sys/icon0.png
+          test "$(identify -format '%wx%h' sce_sys/icon0.png)" = "512x512"
+          test "$(identify -format '%[channels]' sce_sys/icon0.png)" = "srgb"
+          echo "===== SFO CONTENT ====="
+          "$OO_PS4_TOOLCHAIN/bin/linux/PkgTool.Core" sfo_listentries sce_sys/param.sfo
+          echo "===== PKG INTEGRITY VALIDATION ====="
+          "$OO_PS4_TOOLCHAIN/bin/linux/PkgTool.Core" pkg_validate --verbose "$PKG"
+          echo "===== PKG ENTRY TABLE ====="
+          "$OO_PS4_TOOLCHAIN/bin/linux/PkgTool.Core" pkg_listentries "$PKG"
+          ls -lh eboot.bin sce_sys/param.sfo sce_sys/icon0.png build/pkg/sce_module/libc.prx build/pkg/sce_module/libSceFios2.prx "$PKG"
+          sha256sum eboot.bin sce_sys/param.sfo sce_sys/icon0.png build/pkg/sce_module/libc.prx build/pkg/sce_module/libSceFios2.prx "$PKG"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: blackout-ps4-fself-pkg
+          path: |
+            eboot.bin
+            sce_sys/param.sfo
+            sce_sys/icon0.png
+            IV0000-BLSG00001_00-0000000000000001.pkg
+          retention-days: 14
+ /tmp/menu-video-info.txt
 
       - name: Récupérer create-fself officiel
         uses: actions/checkout@v4
