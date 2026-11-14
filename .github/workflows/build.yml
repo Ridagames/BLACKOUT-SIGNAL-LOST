@@ -47,8 +47,8 @@ jobs:
         run: |
           set -eu
           apt-get update
-          apt-get install -y imagemagick glslc python3-mako
-          glslc --version
+          apt-get install -y imagemagick glslang-tools python3-mako
+          glslangValidator --version
           python3 -c "import mako; print('Mako ready')"
 
       - name: Compiler le compilateur de shaders PS4
@@ -146,8 +146,8 @@ jobs:
           export PATH="$OO_PS4_TOOLCHAIN/bin/linux:$OO_PS4_TOOLCHAIN:/usr/local/bin:$PATH"
           make clean
           make V=1
-          glslc -fshader-stage=vertex assets/SHADERS/nexus9.vert -o assets/SHADERS/nexus9.vert.spv
-          glslc -fshader-stage=fragment assets/SHADERS/nexus9.frag -o assets/SHADERS/nexus9.frag.spv
+          glslangValidator -V -S vert assets/SHADERS/nexus9.vert -o assets/SHADERS/nexus9.vert.spv
+          glslangValidator -V -S frag assets/SHADERS/nexus9.frag -o assets/SHADERS/nexus9.frag.spv
           tools/opengnm-psbc/opengnm-psbc -s vertex -f assets/SHADERS/nexus9.vert.spv -o assets/SHADERS/nexus9.vert.sb -4
           tools/opengnm-psbc/opengnm-psbc -s fragment -f assets/SHADERS/nexus9.frag.spv -o assets/SHADERS/nexus9.frag.sb -4
           test -s assets/SHADERS/nexus9.vert.sb
