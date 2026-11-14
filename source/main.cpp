@@ -1,6 +1,8 @@
 #include <cstdio>
 #include <cstring>
 #include <cstdint>
+#include <atomic>
+#include <thread>
 #include <orbis/libkernel.h>
 #include <orbis/Pad.h>
 #include <orbis/UserService.h>
@@ -23,6 +25,7 @@ static int lastPadHandle = -1;
 static int stickRepeat = 0;
 static int diagnosticPadInit = -999;
 static int diagnosticUserInit = -999;
+static std::atomic<unsigned int> pendingPressed(0);
 static int diagnosticUserResult = -999;
 static int diagnosticActiveUser = -1;
 static unsigned int diagnosticConnected = 0;
@@ -360,20 +363,23 @@ int main()
                 ORBIS_PAD_BUTTON_CROSS | ORBIS_PAD_BUTTON_CIRCLE);
     }
 
+    // Lecture de la manette sur un thread independant du rendu 3D.
+    // Le rendu natif 1080p peut prendre du temps : les pressions sont ainsi
+    // capturees meme pendant le calcul des triangles.
+    std::thread controllerThread([pad]() {
+        for (;;) {
+            OrbisPadData state = {};
+            const unsigned int pressed = pollPressed(pad, state);
+            if (pressed)
+                pendingPressed.fetch_or(pressed, std::memory_order_relaxed);
+            sceKernelUsleep(8000);
+        }
+    });
+    controllerThread.detach();
+
     int frameId = 0;
     for (;;) {
-        OrbisPadData state = {};
-        const unsigned int pressed = pollPressed(pad, state);
-        static int diagnosticTicks = 0;
-        if ((diagnosticTicks++ % 60) == 0 && pad >= 0) {
-            char message[128];
-            std::snprintf(message, sizeof(message),
-                "PAD handle=%d read=%d buttons=%04x connected=%u",
-                lastPadHandle, lastPadReadResult, lastPadButtons,
-                (unsigned)state.connected);
-            write_status(message);
-        }
-        diagnosticConnected = (unsigned)state.connected;
+        const unsigned int pressed = pendingPressed.exchange(0, std::memory_order_relaxed);
         bool changed = false;
 
         if (page == PAGE_MAIN) {
