@@ -23,7 +23,6 @@ static int stickRepeat = 0;
 static int diagnosticPadInit = -999;
 static int diagnosticUserResult = -999;
 static int diagnosticActiveUser = -1;
-static unsigned int diagnosticConnected = 0;
 
 static void write_status(const char *message)
 {
@@ -166,8 +165,8 @@ static void drawDiagnostics(Scene2D &scene)
     const Color red = {230, 105, 78};
     const Color green = {120, 210, 145};
 
-    scene.DrawRectangle(1380, 35, 500, 230, {8, 12, 14});
-    scene.DrawRectangle(1380, 35, 4, 230, {218, 75, 54});
+    scene.DrawRectangle(1380, 35, 500, 270, {8, 12, 14});
+    scene.DrawRectangle(1380, 35, 4, 270, {218, 75, 54});
     drawText(scene, "PAD DIAGNOSTIC", 1400, 52, 2, white);
 
     std::snprintf(line, sizeof(line), "PAD INIT %d", diagnosticPadInit);
@@ -187,6 +186,9 @@ static void drawDiagnostics(Scene2D &scene)
 
     std::snprintf(line, sizeof(line), "BUTTONS %08X", (unsigned int)lastPadButtons);
     drawText(scene, line, 1400, 238, 2, white);
+
+    std::snprintf(line, sizeof(line), "CONNECTED %u", diagnosticConnected);
+    drawText(scene, line, 1400, 268, 2, diagnosticConnected ? green : red);
 }
 
 static void render(Scene2D &scene, PNG &background, int frameId)
@@ -312,7 +314,6 @@ int main()
             write_status(message);
         }
         diagnosticConnected = (unsigned)state.connected;
-        }
         bool changed = false;
 
         if (page == PAGE_MAIN) {
