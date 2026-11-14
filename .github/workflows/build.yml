@@ -262,6 +262,8 @@ jobs:
           lightAnimation += 0.016f;
           s_mpass.cbufmem->c_lights[0].colorintensity = 42.0f * (0.92f + 0.08f * sinf(lightAnimation * 2.1f));
           s_mpass.cbufmem->c_lights[1].position.x = 0.45f * sinf(lightAnimation * 0.65f);
+          s_mpass.location.x = 0.06f * sinf(lightAnimation * 0.32f);
+          s_mpass.rotation.y = 0.25f * sinf(lightAnimation * 0.2f);
           // setup camera before render work""")
           s = s.replace(".texture = curmesh->material.albedo,\n\t\t\t.constbuf = s_mpass.constbuf,\n\t\t\t.sampler = s_mpass.sampler,", ".texture = curmesh->material.albedo,\n\t\t\t.constbuf = s_mpass.constbuf,\n\t\t\t.sampler = s_mpass.sampler,\n\t\t\t.shadowTexture = s_shadowTexture,\n\t\t\t.shadowSampler = s_shadowSampler,")
           s += """
