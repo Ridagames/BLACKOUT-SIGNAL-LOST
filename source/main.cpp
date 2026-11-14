@@ -420,7 +420,7 @@ int main()
             }
         }
 
-        // Scene 3D OBJ rasterisee en temps reel : aucun MP4 ni sequence d'images.
+        // Scene 3D GNM rendue sur le GPU PS4, menu compose par shader.
         render(scene, frameId++);
         sceKernelUsleep(12000);
     }
