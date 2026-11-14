@@ -184,7 +184,7 @@ nodes.clear()
 out = nodes.new("ShaderNodeOutputMaterial")
 vol = nodes.new("ShaderNodeVolumePrincipled")
 vol.inputs["Color"].default_value = (0.38,0.44,0.47,1)
-vol.inputs["Density"].default_value = 0.012
+vol.inputs["Density"].default_value = 0.004
 fogmat.node_tree.links.new(vol.outputs["Volume"], out.inputs["Volume"])
 cube("Atmospheric haze volume", (0,8,1.6), (7.5,18,3.0), fogmat)
 
@@ -192,9 +192,16 @@ cube("Atmospheric haze volume", (0,8,1.6), (7.5,18,3.0), fogmat)
 import os
 scene = bpy.context.scene
 scene.render.engine = "BLENDER_EEVEE_NEXT" if bpy.app.version >= (4,2,0) else "BLENDER_EEVEE"
-scene.render.resolution_x = 1280
-scene.render.resolution_y = 720
+scene.render.resolution_x = 960
+scene.render.resolution_y = 540
 scene.render.resolution_percentage = 100
+# Keep Eevee practical on CPU-only GitHub runners while preserving 24 fps motion.
+if hasattr(scene, "eevee") and hasattr(scene.eevee, "taa_render_samples"):
+    scene.eevee.taa_render_samples = 8
+if hasattr(scene, "eevee") and hasattr(scene.eevee, "use_volumetric_shadows"):
+    scene.eevee.use_volumetric_shadows = False
+if hasattr(scene, "eevee") and hasattr(scene.eevee, "use_raytracing"):
+    scene.eevee.use_raytracing = False
 scene.render.fps = 24
 scene.render.fps_base = 1.0
 scene.world.color = (0.008,0.010,0.012)
@@ -228,7 +235,7 @@ bpy.ops.render.render(write_still=True)
 
 # Keyframe camera drift, fluorescent flicker and slow volumetric haze motion.
 for frame in range(1, frame_count + 1):
-    phase = ((frame - 1) / float(frame_count)) * math.tau
+    phase = ((frame - 1) / float(frame_count - 1)) * math.tau
     camera.location = base_camera + Vector((
         0.055 * math.sin(phase), 0.035 * math.cos(phase),
         0.020 * math.sin(phase * 2.0)
