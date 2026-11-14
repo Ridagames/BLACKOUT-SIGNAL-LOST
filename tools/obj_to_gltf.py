@@ -75,7 +75,7 @@ with open(SRC,encoding="utf-8",errors="ignore") as f:
                 normal=(nx/ln,ny/ln,nz/ln)
                 for idx in tri:
                     x,y,z=vertices[idx]
-                    # corridor forward axis is converted to negative Z for the left-handed PS4 camera
+                    # Preserve the OBJ +Z corridor axis and the original renderer's +5m depth offset.
                     pos=(x,y,z+5.0)
                     uv=(x*0.22,z*0.22)
                     metal,rough=mat_props[active]
