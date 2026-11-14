@@ -188,16 +188,15 @@ vol.inputs["Density"].default_value = 0.012
 fogmat.node_tree.links.new(vol.outputs["Volume"], out.inputs["Volume"])
 cube("Atmospheric haze volume", (0,8,1.6), (7.5,18,3.0), fogmat)
 
-# Dark cinematic grade and restrained film grain-like roughness via compositor.
+# Cinematic colour grade, still fallback, and a seamless H.264 menu loop.
+import os
 scene = bpy.context.scene
 scene.render.engine = "BLENDER_EEVEE_NEXT" if bpy.app.version >= (4,2,0) else "BLENDER_EEVEE"
-scene.render.resolution_x = 960
-scene.render.resolution_y = 540
+scene.render.resolution_x = 1280
+scene.render.resolution_y = 720
 scene.render.resolution_percentage = 100
-scene.render.image_settings.file_format = "PNG"
-scene.render.image_settings.color_mode = "RGB"
-scene.render.image_settings.color_depth = "8"
-scene.render.filepath = output
+scene.render.fps = 24
+scene.render.fps_base = 1.0
 scene.world.color = (0.008,0.010,0.012)
 scene.view_settings.view_transform = "AgX" if "AgX" in bpy.context.scene.view_settings.bl_rna.properties["view_transform"].enum_items.keys() else "Standard"
 available_looks = scene.view_settings.bl_rna.properties["look"].enum_items.keys()
@@ -206,37 +205,67 @@ scene.view_settings.look = preferred_look
 scene.camera.data.dof.use_dof = True
 scene.camera.data.dof.focus_distance = 17
 scene.camera.data.dof.aperture_fstop = 8.0
-scene.render.image_settings.compression = 20
 scene.render.film_transparent = False
-scene.camera.data.lens = 36
-scene.frame_start = 0
-scene.frame_end = 5
-scene.render.image_settings.file_format = "PNG"
 scene.render.image_settings.color_mode = "RGB"
 scene.render.image_settings.color_depth = "8"
 scene.render.image_settings.compression = 25
 
-# Six seamless ambient frames: gentle camera drift, volumetric haze drift and unstable fluorescents.
 base_camera = camera.location.copy()
 base_target = target.copy()
 lights = [obj for obj in scene.objects if obj.type == "LIGHT"]
 base_light_energies = [light.data.energy for light in lights]
-for frame in range(6):
-    phase = (frame / 6.0) * math.tau
-    camera.location = base_camera + Vector((0.045 * math.sin(phase), 0.025 * math.cos(phase), 0.018 * math.sin(phase*2.0)))
-    look_target = base_target + Vector((0.025 * math.sin(phase), 0.0, 0.012 * math.cos(phase)))
-    camera.rotation_euler = (look_target - camera.location).to_track_quat("-Z","Y").to_euler()
-    for index, light in enumerate(lights):
-        pulse = 0.92 + 0.08 * math.sin(phase * 2.0 + index * 1.7)
-        if index % 3 == frame % 3:
-            pulse *= 0.76
-        light.data.energy = max(8.0, base_light_energies[index] * pulse)
-    for haze in [obj for obj in scene.objects if obj.name == "Atmospheric haze volume"]:
-        haze.location.x = 0.06 * math.sin(phase)
-        haze.location.y = 8.0 + 0.10 * math.cos(phase)
-    scene.frame_set(frame)
-    scene.render.filepath = output.rsplit(".",1)[0] + "_%02d.png" % frame
-    bpy.ops.render.render(write_still=True)
+haze = bpy.data.objects.get("Atmospheric haze volume")
+frame_count = 120
+scene.frame_start = 1
+scene.frame_end = frame_count
 
-# Keep the native scene file for future iteration and debugging.
-bpy.ops.wm.save_as_mainfile(filepath=output.rsplit("/",1)[0] + "/blackout_menu_scene.blend")
+# Still fallback for systems where AvPlayer cannot initialise.
+scene.render.image_settings.file_format = "PNG"
+fallback = os.path.splitext(output)[0] + ".png"
+scene.frame_set(1)
+scene.render.filepath = fallback
+bpy.ops.render.render(write_still=True)
+
+# Keyframe camera drift, fluorescent flicker and slow volumetric haze motion.
+for frame in range(1, frame_count + 1):
+    phase = ((frame - 1) / float(frame_count)) * math.tau
+    camera.location = base_camera + Vector((
+        0.055 * math.sin(phase), 0.035 * math.cos(phase),
+        0.020 * math.sin(phase * 2.0)
+    ))
+    look_target = base_target + Vector((
+        0.030 * math.sin(phase), 0.0, 0.016 * math.cos(phase)
+    ))
+    camera.rotation_euler = (look_target - camera.location).to_track_quat("-Z","Y").to_euler()
+    camera.keyframe_insert(data_path="location", frame=frame)
+    camera.keyframe_insert(data_path="rotation_euler", frame=frame)
+
+    for index, light in enumerate(lights):
+        pulse = 0.94 + 0.06 * math.sin(phase * 2.0 + index * 1.55)
+        if index % 4 == (frame // 3) % 4:
+            pulse *= 0.84
+        light.data.energy = max(8.0, base_light_energies[index] * pulse)
+        light.data.keyframe_insert(data_path="energy", frame=frame)
+
+    if haze:
+        haze.location.x = 0.075 * math.sin(phase)
+        haze.location.y = 8.0 + 0.12 * math.cos(phase)
+        haze.keyframe_insert(data_path="location", frame=frame)
+
+# Linear interpolation keeps motion continuous through the loop.
+for obj in [camera] + lights + ([haze] if haze else []):
+    animation = obj.animation_data
+    if animation and animation.action:
+        for fcurve in animation.action.fcurves:
+            for key in fcurve.keyframe_points:
+                key.interpolation = "LINEAR"
+
+scene.render.image_settings.file_format = "FFMPEG"
+scene.render.ffmpeg.format = "MPEG4"
+scene.render.ffmpeg.codec = "H264"
+scene.render.ffmpeg.constant_rate_factor = "HIGH"
+scene.render.ffmpeg.ffmpeg_preset = "GOOD"
+scene.render.filepath = output
+scene.frame_set(1)
+bpy.ops.wm.save_as_mainfile(filepath=os.path.splitext(output)[0] + "_scene.blend")
+bpy.ops.render.render(animation=True)
