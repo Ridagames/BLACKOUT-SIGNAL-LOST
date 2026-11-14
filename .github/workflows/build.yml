@@ -161,6 +161,8 @@ jobs:
           check_file assets/SHADERS/nexus9.frag
           check_file assets/SHADERS/clear.frag
           check_file assets/SHADERS/nexus9_ui.frag
+          check_file assets/SHADERS/nexus9_shadow.vert
+          check_file assets/SHADERS/nexus9_shadow.frag
           check_file tools/obj_to_gltf.py
           check_file source/main.cpp
           check_file source/common/graphics.cpp
@@ -206,10 +208,14 @@ jobs:
           glslangValidator -V -S frag assets/SHADERS/nexus9.frag -o assets/SHADERS/nexus9.frag.spv
           glslangValidator -V -S frag assets/SHADERS/clear.frag -o assets/SHADERS/clear.frag.spv
           glslangValidator -V -S frag assets/SHADERS/nexus9_ui.frag -o assets/SHADERS/nexus9_ui.frag.spv
+          glslangValidator -V -S vert assets/SHADERS/nexus9_shadow.vert -o assets/SHADERS/nexus9_shadow.vert.spv
+          glslangValidator -V -S frag assets/SHADERS/nexus9_shadow.frag -o assets/SHADERS/nexus9_shadow.frag.spv
           tools/opengnm-psbc/opengnm-psbc -s vertex -f assets/SHADERS/nexus9.vert.spv -o assets/SHADERS/nexus9.vert.sb -4
           tools/opengnm-psbc/opengnm-psbc -s fragment -f assets/SHADERS/nexus9.frag.spv -o assets/SHADERS/nexus9.frag.sb -4
           tools/opengnm-psbc/opengnm-psbc -s fragment -f assets/SHADERS/clear.frag.spv -o assets/SHADERS/clear.frag.sb -4
           tools/opengnm-psbc/opengnm-psbc -s fragment -f assets/SHADERS/nexus9_ui.frag.spv -o assets/SHADERS/nexus9_ui.frag.sb -4
+          tools/opengnm-psbc/opengnm-psbc -s vertex -f assets/SHADERS/nexus9_shadow.vert.spv -o assets/SHADERS/nexus9_shadow.vert.sb -4
+          tools/opengnm-psbc/opengnm-psbc -s fragment -f assets/SHADERS/nexus9_shadow.frag.spv -o assets/SHADERS/nexus9_shadow.frag.sb -4
           python3 - <<'PY'
           p = "tools/freegnm-examples/gltf/src/pass_model.c"
           s = open(p, encoding="utf-8").read()
@@ -244,6 +250,8 @@ jobs:
           test -s build/pkg/USRDIR/SHADERS/nexus9.frag.sb
           test -s build/pkg/USRDIR/SHADERS/clear.frag.sb
           test -s build/pkg/USRDIR/SHADERS/nexus9_ui.frag.sb
+          test -s build/pkg/USRDIR/SHADERS/nexus9_shadow.vert.sb
+          test -s build/pkg/USRDIR/SHADERS/nexus9_shadow.frag.sb
           test -s build/pkg/sce_module/libc.prx
           test -s build/pkg/sce_module/libSceFios2.prx
           PKG="IV0000-BLSG00001_00-0000000000000001.pkg"
