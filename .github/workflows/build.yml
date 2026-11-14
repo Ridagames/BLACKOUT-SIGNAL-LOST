@@ -1,4 +1,8 @@
-name: Build BLACKOUT SIGNAL LOST PS4 - Cinematic High Density 3D
+name: Build BLACKOUT SIGNAL LOST PS4 - Native GNM GPU Engine
+
+concurrency:
+  group: blackout-gpu-engine-${{ github.ref }}
+  cancel-in-progress: true
 
 on:
   push:
@@ -306,7 +310,7 @@ jobs:
 
       - uses: actions/upload-artifact@v4
         with:
-          name: blackout-ps4-realtime-3d-obj
+          name: blackout-ps4-native-gpu-engine
           path: |
             eboot.bin
             sce_sys/param.sfo
