@@ -18,6 +18,22 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Recuperer OpenGNM PS4 (API GPU GNM)
+        uses: actions/checkout@v4
+        with:
+          repository: PS4-OpenGNM/opengnm
+          ref: 4b295ca54c82c83acf308d1c646a2dfa9ae57350
+          path: tools/opengnm
+
+      - name: Compiler la bibliotheque GPU OpenGNM pour PS4
+        run: |
+          set -eu
+          export OO_PS4_TOOLCHAIN=/lib/OpenOrbisSDK
+          cp tools/opengnm/config.orbis.mak tools/opengnm/config.mak
+          make -C tools/opengnm lib CC=clang AR=llvm-ar
+          test -s tools/opengnm/libopengnm.a
+          echo "OpenGNM PS4 STATIC LIBRARY READY"
+
       - name: Installer ImageMagick
         run: |
           set -eu
@@ -65,6 +81,7 @@ jobs:
           set -eu
           check_file() { test -s "$1" || { echo "FICHIER MANQUANT: $1"; exit 1; }; }
           check_file Makefile
+          check_file tools/opengnm/libopengnm.a
           check_file source/main.cpp
           check_file source/common/graphics.cpp
           check_file source/common/graphics.h
@@ -80,7 +97,8 @@ jobs:
             echo "ANCIEN SYSTEME VIDEO ENCORE REFERENCE"
             exit 1
           fi
-          echo "VERIFICATIONS OBJ ET MENU TEMPS REEL OK"
+          grep -Fq 'OPENGNM_LIB' Makefile
+          echo "VERIFICATIONS OBJ, MENU ET BASE GPU OPEN GNM OK"
 
       - name: Verifier OpenOrbis et les modules PRX
         run: |
