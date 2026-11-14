@@ -31,9 +31,12 @@ jobs:
           set -eu
           mkdir -p assets/USRDIR
           xvfb-run -a blender -b --python tools/blender/create_blackout_menu.py -- assets/USRDIR/BLACKOUT_MENU.png
-          test -s assets/USRDIR/BLACKOUT_MENU.png
+          for frame in 00 01 02 03 04 05; do
+            test -s "assets/USRDIR/BLACKOUT_MENU_${frame}.png"
+            test "$(identify -format '%wx%h' "assets/USRDIR/BLACKOUT_MENU_${frame}.png")" = "960x540"
+          done
+          cp assets/USRDIR/BLACKOUT_MENU_00.png assets/USRDIR/BLACKOUT_MENU.png
           identify -format '%m %wx%h\\n' assets/USRDIR/BLACKOUT_MENU.png
-          test "$(identify -format '%wx%h' assets/USRDIR/BLACKOUT_MENU.png)" = "1920x1080"
 
       - name: Récupérer create-fself officiel
         uses: actions/checkout@v4
@@ -78,6 +81,7 @@ jobs:
           check_file Makefile
           check_file source/main.cpp
           check_file assets/USRDIR/BLACKOUT_MENU.png
+          for frame in 00 01 02 03 04 05; do check_file "assets/USRDIR/BLACKOUT_MENU_${frame}.png"; done
           check_file tools/blender/create_blackout_menu.py
           check_file sce_sys/ICON0.PNG
           check_file source/common/graphics.cpp
@@ -123,6 +127,7 @@ jobs:
           test -s sce_sys/icon0.png
           test -s build/pkg/sce_module/libc.prx
           test -s build/pkg/sce_module/libSceFios2.prx
+          for frame in 00 01 02 03 04 05; do test -s "build/pkg/USRDIR/BLACKOUT_MENU_${frame}.png"; done
           PKG="IV0000-BLSG00001_00-0000000000000001.pkg"
           test -s "$PKG"
           od -An -N4 -tx1 eboot.bin | grep -q "4f 15 3d 1d"
