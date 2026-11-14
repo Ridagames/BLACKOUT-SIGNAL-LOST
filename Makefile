@@ -29,7 +29,8 @@ VIDEO_OBJ := $(INTDIR)/video_player.o
 OBJS := $(patsubst $(PROJDIR)/%.c,$(INTDIR)/%.o,$(CFILES)) \
         $(patsubst $(PROJDIR)/%.cpp,$(INTDIR)/%.o,$(CPPFILES)) \
         $(GRAPHICS_OBJ) \
-        $(PNG_OBJ)
+        $(PNG_OBJ) \\
+        $(VIDEO_OBJ)
 
 CFLAGS := --target=x86_64-pc-freebsd12-elf -fPIC -funwind-tables -c $(EXTRAFLAGS) -isysroot $(TOOLCHAIN) -isystem $(TOOLCHAIN)/include
 CXXFLAGS := $(CFLAGS) -isystem $(TOOLCHAIN)/include/c++/v1 -DDIAGNOSTIC_BUILD=$(DIAGNOSTIC_BUILD)
