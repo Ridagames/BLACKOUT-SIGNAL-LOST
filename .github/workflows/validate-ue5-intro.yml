@@ -1,0 +1,24 @@
+name: Validate BLACKOUT UE5 cinematic script
+
+on:
+  push:
+    branches:
+      - ue5/cinematic-intro
+    paths:
+      - "Content/Python/**"
+      - ".github/workflows/validate-ue5-intro.yml"
+  pull_request:
+    branches:
+      - ue5/cinematic-intro
+    paths:
+      - "Content/Python/**"
+      - ".github/workflows/validate-ue5-intro.yml"
+
+jobs:
+  python-syntax:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout cinematic branch
+        uses: actions/checkout@v4
+      - name: Check Python syntax
+        run: python -m py_compile Content/Python/create_blackout_intro.py
