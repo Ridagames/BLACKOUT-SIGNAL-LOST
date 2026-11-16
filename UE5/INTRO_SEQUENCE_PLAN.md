@@ -13,6 +13,6 @@ Target: 24 seconds, 16:9, 24 fps. Mood: oppressive industrial survival horror.
 
 ## Current implementation
 
-The editor script creates a corridor blockout, cold practical lights, height fog, a Cine Camera, a 24 fps Level Sequence and the three title/credit text actors. It is intended to be run inside Unreal Editor 5.4. This is not yet the final cinematic: the title actors are currently static, and the signal glitch, fades, authored materials, dust particles, original audio and menu transition still need a dedicated art/audio pass.
+The editor script creates a corridor blockout, cold practical lights, height fog, a Cine Camera, a 24 fps Level Sequence and staggered scale reveals for the title, subtitle and Ridagames credit. It is intended to be run inside Unreal Editor 5.4. This is not yet the final cinematic: the signal glitch, true opacity fades, authored materials, dust particles, original audio and menu transition still need a dedicated art/audio pass.
 
 Use original or properly licensed sound and typography. If displaying Epic's Unreal Engine logo, use official artwork according to Epic's branding rules; do not recreate or distort the logo.
