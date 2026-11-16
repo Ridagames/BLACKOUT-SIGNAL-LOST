@@ -192,6 +192,13 @@ def build_level():
     credit = add_text("ÉDITÉ PAR RIDAGAMES", "INTRO_Credit",
                       unreal.Vector(1570, 0, 95), unreal.Rotator(0, 180, 0),
                       18.0, unreal.Color(190, 198, 205, 255))
+    # Brief offset signal echoes: a restrained red/cyan interference accent.
+    glitch_cyan = add_text("SIGNAL LOST", "INTRO_Glitch_Cyan",
+                           unreal.Vector(1574, -5, 165), unreal.Rotator(0, 180, 0),
+                           28.0, unreal.Color(55, 190, 220, 255))
+    glitch_red = add_text("SIGNAL LOST", "INTRO_Glitch_Red",
+                          unreal.Vector(1576, 5, 165), unreal.Rotator(0, 180, 0),
+                          28.0, unreal.Color(210, 65, 75, 255))
 
     # Cold practical pools of light down the corridor.
     for index in range(5):
@@ -242,6 +249,16 @@ def build_level():
         (16 * FPS, 0.02), (17 * FPS, 0.2),
         (19 * FPS, 1.0), (24 * FPS, 1.0)
     ], "ÉDITÉ PAR RIDAGAMES")
+    # Three short bursts around the signal interruption (8–11 seconds).
+    glitch_keys = [
+        (0, 0.02), (8 * FPS, 0.02),
+        (8 * FPS + 3, 1.0), (8 * FPS + 7, 0.02),
+        (9 * FPS + 2, 1.0), (9 * FPS + 6, 0.02),
+        (10 * FPS + 4, 1.0), (10 * FPS + 8, 0.02),
+        (24 * FPS, 0.02)
+    ]
+    animate_text_scale(sequence, glitch_cyan, glitch_keys, "cyan signal interference")
+    animate_text_scale(sequence, glitch_red, glitch_keys, "red signal interference")
 
     if camera:
         camera_binding = add_camera_animation(sequence, camera)
