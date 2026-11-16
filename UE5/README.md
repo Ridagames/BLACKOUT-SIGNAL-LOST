@@ -7,6 +7,7 @@ Dedicated UE5 authoring branch for the opening cinematic. The OpenOrbis/PS4 work
 - `BLACKOUT-UE5.uproject`: UE 5.4 project descriptor.
 - `Config/DefaultEngine.ini`: startup map points to `/Game/Maps/L_Intro`.
 - `Content/Python/create_blackout_intro.py`: full editor-side generator for the environment, PBR materials, cinematic camera, animated titles, lighting, audio and Level Sequence.
+- `Content/SourceMeshes/*.obj`: five authored polygon source meshes automatically imported into `/Game/Meshes` (generator, terminal, ceiling lamp, door frame and floor grate).
 - `UE5/INTRO_SEQUENCE_PLAN.md`: timeline and creative direction.
 - `UE5/ASSET_CATALOG.md`: generated asset inventory and intended use.
 
@@ -18,7 +19,7 @@ Dedicated UE5 authoring branch for the opening cinematic. The OpenOrbis/PS4 work
 4. The script creates the map `/Game/Maps/L_Intro`, sequence `/Game/Cinematics/LS_BLACKOUT_Intro`, material assets under `/Game/Materials`, and imports its generated original stereo WAV into `/Game/Audio/SW_BLACKOUT_Intro`.
 5. Open the Level Sequence in Sequencer, check the camera cut/audio/autoplay tracks, then render a review movie with Movie Render Queue.
 
-The script is designed to build the whole first-pass scene in one run. It uses engine primitive meshes arranged into a detailed industrial corridor, with generated PBR materials and a large set of environment props; it does not depend on downloading external art packs.
+The script is designed to build the whole first-pass scene in one run. It combines five authored OBJ source meshes with engine primitives arranged into a detailed industrial corridor, generated PBR materials and a large set of environment props; it does not depend on downloading external art packs.
 
 ## Cinematic specification
 
