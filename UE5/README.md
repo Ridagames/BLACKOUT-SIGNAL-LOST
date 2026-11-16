@@ -1,17 +1,31 @@
 # BLACKOUT: SIGNAL LOST — Unreal Engine 5
 
-This branch isolates the UE5 project scaffold from the existing OpenOrbis PS4 homebrew branch.
+This branch contains the isolated UE5 authoring project and the opening-cinematic editor automation.
 
-## Current state
+## Project layout
 
-- A dedicated UE5 project descriptor is provided at `BLACKOUT-UE5.uproject`.
-- Python Editor Scripting and Editor Scripting Utilities are enabled for editor automation.
-- The intro sequence is being built as an Unreal Editor scene/Level Sequence. This repository commit is source scaffolding; it is **not** a rendered or tested cinematic.
+- `BLACKOUT-UE5.uproject`: project descriptor (Unreal Engine 5.4).
+- `Config/`: project and renderer settings.
+- `Content/Python/create_blackout_intro.py`: builds the intro level and a 24-second Level Sequence inside Unreal Editor.
+- `UE5/INTRO_SEQUENCE_PLAN.md`: creative timeline and sound direction.
 
-## Important platform note
+## Create the intro inside Unreal Editor
 
-The UE5 project is for authoring and preview on a supported desktop editor. A PS4 build is a separate platform port and requires authorized Sony platform access and compatible engine/toolchain work. Do not assume this project can currently package for PS4/GoldHEN.
+1. Open `BLACKOUT-UE5.uproject` with Unreal Engine 5.4.
+2. Enable the **Python Editor Script Plugin** and **Editor Scripting Utilities** if prompted, then restart the editor.
+3. In Unreal Editor, run `Content/Python/create_blackout_intro.py` from **Tools > Execute Python Script** (menu wording can vary by UE version).
+4. Open `/Game/Cinematics/LS_BLACKOUT_Intro` in Sequencer and preview it. The generated level is `/Game/Maps/L_Intro`.
+5. If the camera-cut binding is not accepted by the installed UE 5.4 patch, add a Camera Cuts track and assign `INTRO_CinematicCamera` manually.
 
-## Intro direction
+## What this first scene creates
 
-Target runtime: about 24 seconds. Tone: oppressive survival-horror, near-black image, distant industrial ambience, cold volumetric shafts, restrained glitch pulses, camera push through darkness, title reveal, then `ÉDITÉ PAR RIDAGAMES`. Use original audio only; no Unreal/Epic logo artwork is bundled or imitated. If an official Unreal Engine logo is used, follow Epic's branding guidelines.
+- A long industrial corridor blockout with floor, ceiling, wall ribs and an end wall.
+- Cold practical point lights and atmospheric height fog.
+- A Cine Camera with a 24 fps, 24-second forward dolly.
+- The title `BLACKOUT`, subtitle `SIGNAL LOST`, and the credit `ÉDITÉ PAR RIDAGAMES`.
+
+This is a **first playable editor scene/blockout**, not a finished AAA cinematic. The generated geometry uses Unreal's basic cube mesh; final environment art, authored materials, animated title/glitch treatment, original audio, and the menu transition remain to be produced and previewed in the editor. No rendered result has been tested in this environment.
+
+## Platform note
+
+The UE5 authoring project is separate from the PS4 homebrew code. A PS4/GoldHEN build is not implied: console packaging requires authorized Sony platform access and a compatible engine/toolchain port.
