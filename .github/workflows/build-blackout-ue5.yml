@@ -1,0 +1,92 @@
+name: BLACKOUT UE5 - Generate cinematic assets
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - ue5/cinematic-intro
+    paths:
+      - "Content/Python/**"
+      - "Content/SourceMeshes/**"
+      - ".github/workflows/build-blackout-ue5.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  generate:
+    name: Run Unreal Engine automation when available
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout BLACKOUT cinematic branch
+        uses: actions/checkout@v4
+        with:
+          ref: ue5/cinematic-intro
+          lfs: true
+
+      - name: Check generator Python syntax
+        run: python3 -m py_compile Content/Python/create_blackout_intro.py
+
+      - name: Locate Unreal Engine command-line editor
+        id: unreal
+        shell: bash
+        run: |
+          CANDIDATES=(
+            "${UE_EDITOR_CMD:-}"
+            "/opt/UnrealEngine/Engine/Binaries/Linux/UnrealEditor-Cmd"
+            "/UnrealEngine/Engine/Binaries/Linux/UnrealEditor-Cmd"
+            "/usr/local/bin/UnrealEditor-Cmd"
+          )
+          FOUND=""
+          for candidate in "${CANDIDATES[@]}"; do
+            if [ -n "$candidate" ] && [ -x "$candidate" ]; then
+              FOUND="$candidate"
+              break
+            fi
+          done
+          if [ -z "$FOUND" ]; then
+            FOUND="$(command -v UnrealEditor-Cmd || true)"
+          fi
+          if [ -n "$FOUND" ]; then
+            echo "available=true" >> "$GITHUB_OUTPUT"
+            echo "editor=$FOUND" >> "$GITHUB_OUTPUT"
+            echo "Unreal Editor found: $FOUND"
+          else
+            echo "available=false" >> "$GITHUB_OUTPUT"
+            echo "::warning::This GitHub-hosted runner does not have UnrealEditor-Cmd installed. The script cannot create .uasset/.umap files on this runner."
+          fi
+
+      - name: Execute BLACKOUT generator inside Unreal Editor
+        if: steps.unreal.outputs.available == 'true'
+        env:
+          UE_EDITOR: ${{ steps.unreal.outputs.editor }}
+        shell: bash
+        run: |
+          "$UE_EDITOR" "$GITHUB_WORKSPACE/BLACKOUT-UE5.uproject" \
+            -ExecutePythonScript="$GITHUB_WORKSPACE/Content/Python/create_blackout_intro.py" \
+            -unattended -nop4 -nosplash -NullRHI -stdout -FullStdOutLogOutput
+
+      - name: Report missing Unreal Engine
+        if: steps.unreal.outputs.available != 'true'
+        run: |
+          {
+            echo "## Unreal Engine generation not executed"
+            echo ""
+            echo "The hosted GitHub runner has no Unreal Engine installation."
+            echo "Python syntax validation passed, but no .uasset or .umap files were generated."
+            echo ""
+            echo "To execute the generator, attach a self-hosted runner with UE 5.4 installed and set UE_EDITOR_CMD to its UnrealEditor-Cmd executable."
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload generated Unreal project assets
+        if: steps.unreal.outputs.available == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: blackout-ue5-generated-assets
+          path: |
+            Content/**/*.uasset
+            Content/**/*.umap
+            Saved/Logs/**
+          if-no-files-found: warn
+          retention-days: 14
