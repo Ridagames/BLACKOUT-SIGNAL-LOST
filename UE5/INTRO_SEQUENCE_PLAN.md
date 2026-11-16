@@ -1,23 +1,18 @@
-# Intro cinematic — BLACKOUT: SIGNAL LOST
+# BLACKOUT: SIGNAL LOST — Opening cinematic
 
-## Timeline (24 seconds)
+Target: 24 seconds, 16:9, 24 fps. Mood: oppressive industrial survival horror.
 
 | Time | Picture | Sound |
 |---|---|---|
-| 00:00–00:03 | Black. A faint cold light blooms through drifting dust. | Low electrical hum, distant metal impact. |
-| 00:03–00:08 | Slow forward camera move through a dark industrial corridor; a single practical light flickers. | Original sub-bass drone, restrained machinery. |
-| 00:08–00:12 | A brief signal interruption: frame distortion, scanline/glitch accent, then silence for a beat. | Short radio burst and cut. |
-| 00:12–00:17 | The title `BLACKOUT` emerges from darkness; `SIGNAL LOST` resolves beneath it. | Deep cinematic impact, decaying metallic tail. |
-| 00:17–00:21 | `ÉDITÉ PAR RIDAGAMES` appears cleanly, with a subtle light sweep. | Original rising texture, no licensed music. |
-| 00:21–00:24 | Fade to black, ready to transition into the main menu. | Drone fades out. |
+| 00:00–00:03 | Near-black frame; cold light and drifting haze emerge. | Original low electrical drone, distant metal impact. |
+| 00:03–00:08 | Slow camera dolly into a long industrial corridor. | Sub-bass texture and distant machinery. |
+| 00:08–00:12 | A brief signal interruption/glitch accent; image drops toward black. | Short original radio burst, then a beat of silence. |
+| 00:12–00:17 | `BLACKOUT` title resolves, then `SIGNAL LOST`. | Deep original cinematic impact and metallic decay. |
+| 00:17–00:21 | `ÉDITÉ PAR RIDAGAMES` appears. | Restrained rising texture. |
+| 00:21–00:24 | Fade to black, ready for the main-menu transition. | Drone fades away. |
 
-## Look
+## Current implementation
 
-- 16:9, 24 fps, restrained contrast and cold desaturated palette.
-- Slow, deliberate camera movement; no rapid montage.
-- Volumetric fog/dust, practical flicker, subtle chromatic aberration/glitch only at the signal break.
-- Title typography should be custom/licensed and readable; avoid copying another game's logo.
+The editor script creates a corridor blockout, cold practical lights, height fog, a Cine Camera, a 24 fps Level Sequence and the three title/credit text actors. It is intended to be run inside Unreal Editor 5.4. This is not yet the final cinematic: the title actors are currently static, and the signal glitch, fades, authored materials, dust particles, original audio and menu transition still need a dedicated art/audio pass.
 
-## Implementation status
-
-This is the approved creative/technical plan. The UE5 project scaffold is in place, but the Level Sequence, final materials, VFX and audio still need to be authored and previewed in Unreal Editor. No claim of a finished animation or PS4-tested build is made.
+Use original or properly licensed sound and typography. If displaying Epic's Unreal Engine logo, use official artwork according to Epic's branding rules; do not recreate or distort the logo.
