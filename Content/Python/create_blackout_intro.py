@@ -5,12 +5,18 @@ Creates /Game/Maps/L_Intro and /Game/Cinematics/LS_BLACKOUT_Intro.
 This is editor automation; open and preview the sequence in Sequencer.
 """
 import unreal
+import math
+import os
+import random
+import wave
+import struct
 
 FPS = 24
 DURATION = 24
 MAP_PATH = "/Game/Maps/L_Intro"
 SEQUENCE_PATH = "/Game/Cinematics/LS_BLACKOUT_Intro"
 CUBE_PATH = "/Engine/BasicShapes/Cube"
+AUDIO_PATH = "/Game/Audio/SW_BLACKOUT_Intro"
 
 
 def log(message):
@@ -63,6 +69,89 @@ def add_text(text, label, location, rotation, size, color):
     return actor
 
 
+
+def add_smooth_key(channel, frame, value):
+    key = channel.add_key(unreal.FrameNumber(frame), value)
+    try:
+        channel.set_interpolation_mode(key, unreal.MovieSceneKeyInterpolation.CUBIC)
+    except Exception:
+        pass
+
+
+def generate_original_audio():
+    """Generate an original 24-second industrial horror ambience WAV."""
+    saved_dir = unreal.Paths.project_saved_dir()
+    os.makedirs(saved_dir, exist_ok=True)
+    wav_path = os.path.join(saved_dir, "BLACKOUT_Intro_Ambience.wav")
+    sample_rate = 22050
+    total = sample_rate * DURATION
+    rng = random.Random(34017)
+    static_windows = [(8.0, 8.7), (9.15, 9.55), (10.25, 10.95)]
+    impact_time = 12.55
+
+    with wave.open(wav_path, "wb") as wav:
+        wav.setnchannels(1)
+        wav.setsampwidth(2)
+        wav.setframerate(sample_rate)
+        chunk = bytearray()
+        for i in range(total):
+            t = i / sample_rate
+            fade_in = min(1.0, t / 2.0)
+            fade_out = min(1.0, max(0.0, (DURATION - t) / 3.0))
+            drone = (0.115 * math.sin(2.0 * math.pi * 43.0 * t)
+                     + 0.045 * math.sin(2.0 * math.pi * 64.5 * t)
+                     + 0.025 * math.sin(2.0 * math.pi * 51.0 * t + math.sin(t * 0.23)))
+            machine = 0.018 * math.sin(2.0 * math.pi * 118.0 * t + math.sin(t * 0.7))
+            signal = 0.0
+            for start, end in static_windows:
+                if start <= t <= end:
+                    envelope = min(1.0, (t - start) * 24.0, (end - t) * 18.0)
+                    signal += rng.uniform(-0.20, 0.20) * max(0.0, envelope)
+            dt = t - impact_time
+            if dt >= 0.0:
+                impact_env = math.exp(-dt * 3.2)
+                signal += 0.24 * impact_env * math.sin(2.0 * math.pi * 57.0 * dt)
+                signal += 0.08 * impact_env * math.sin(2.0 * math.pi * 173.0 * dt)
+            value = max(-0.92, min(0.92, (drone + machine + signal) * fade_in * fade_out))
+            chunk.extend(struct.pack("<h", int(value * 32767)))
+            if len(chunk) >= 32768:
+                wav.writeframesraw(chunk)
+                chunk.clear()
+        if chunk:
+            wav.writeframesraw(chunk)
+
+    try:
+        task = unreal.AssetImportTask()
+        task.set_editor_property("filename", wav_path)
+        task.set_editor_property("destination_path", "/Game/Audio")
+        task.set_editor_property("destination_name", "SW_BLACKOUT_Intro")
+        task.set_editor_property("automated", True)
+        task.set_editor_property("replace_existing", True)
+        task.set_editor_property("save", True)
+        unreal.AssetToolsHelpers.get_asset_tools().import_asset_tasks([task])
+        sound = unreal.EditorAssetLibrary.load_asset(AUDIO_PATH)
+        if sound:
+            log("Imported original ambience: " + AUDIO_PATH)
+            return sound
+        log("SoundWave import did not return an asset.")
+    except Exception as exc:
+        log("Audio import failed: " + str(exc))
+    return None
+
+
+def add_audio_to_sequence(sequence, sound):
+    if not sound:
+        return
+    try:
+        track = sequence.add_master_track(unreal.MovieSceneAudioTrack)
+        section = track.add_section()
+        section.set_editor_property("sound", sound)
+        section.set_range(0, FPS * DURATION)
+        log("Original ambience added to Sequencer.")
+    except Exception as exc:
+        log("Sequencer audio track setup failed: " + str(exc))
+
+
 def add_camera_animation(sequence, camera):
     binding = sequence.add_possessable(camera)
     track = binding.add_track(unreal.MovieScene3DTransformTrack)
@@ -81,7 +170,7 @@ def add_camera_animation(sequence, camera):
     ]
     for frame, position, rotation in keys:
         for channel_index, value in enumerate(position):
-            channels[channel_index].add_key(unreal.FrameNumber(frame), value)
+            add_smooth_key(channels[channel_index], frame, value)
         for channel_index, value in enumerate(rotation, start=3):
             channels[channel_index].add_key(unreal.FrameNumber(frame), value)
     return binding
@@ -102,12 +191,12 @@ def animate_text_scale(sequence, actor, keyframes, label):
     location = transform.translation
     rotation = transform.rotation.rotator()
     for index, value in enumerate((location.x, location.y, location.z)):
-        channels[index].add_key(unreal.FrameNumber(0), value)
+        add_smooth_key(channels[index], 0, value)
     for index, value in enumerate((rotation.roll, rotation.pitch, rotation.yaw), start=3):
         channels[index].add_key(unreal.FrameNumber(0), value)
     for frame, scale in keyframes:
         for index in range(3):
-            channels[index + 6].add_key(unreal.FrameNumber(frame), scale)
+            add_smooth_key(channels[index + 6], frame, scale)
     log("Animated reveal: " + label)
 
 
@@ -129,7 +218,7 @@ def add_fade_track(sequence):
             (24 * FPS, 1.0),
         ]
         for frame, value in fade_keys:
-            opacity.add_key(unreal.FrameNumber(frame), value)
+            add_smooth_key(opacity, frame, value)
         log("Added opening and ending fade-to-black.")
     except Exception as exc:
         log("Fade track could not be generated automatically: " + str(exc))
@@ -180,9 +269,12 @@ def build_level():
         add_box(cube, "INTRO_Rib_%02d" % index,
                 unreal.Vector(x, 0, 405), unreal.Vector(0.12, 3.0, 0.16))
 
-    # Distant end wall and a readable title/credit reveal.
+    # Distant end wall and layered studio/title reveal.
     add_box(cube, "INTRO_EndWall", unreal.Vector(1740, 0, 190),
             unreal.Vector(0.18, 3.0, 3.8))
+    engine_credit = add_text("UNREAL ENGINE", "INTRO_EngineCredit",
+                             unreal.Vector(1570, 0, 325), unreal.Rotator(0, 180, 0),
+                             22.0, unreal.Color(190, 205, 218, 255))
     title = add_text("BLACKOUT", "INTRO_Title_BLACKOUT",
                      unreal.Vector(1580, 0, 245), unreal.Rotator(0, 180, 0),
                      78.0, unreal.Color(220, 232, 240, 255))
@@ -235,6 +327,15 @@ def build_level():
     # Fade in from black and fade out to prepare the main-menu transition.
     add_fade_track(sequence)
 
+    sound = generate_original_audio()
+    add_audio_to_sequence(sequence, sound)
+
+    # Studio credit appears first, then the game title.
+    animate_text_scale(sequence, engine_credit, [
+        (2 * FPS, 0.02), (3 * FPS, 0.25),
+        (4 * FPS, 1.0), (6 * FPS, 1.0), (7 * FPS, 0.02)
+    ], "UNREAL ENGINE credit")
+
     # Staggered title reveal: scale eases from near-zero to full size,
     # with long holds so each line remains readable.
     animate_text_scale(sequence, title, [
@@ -272,13 +373,24 @@ def build_level():
         except Exception as exc:
             log("Camera cut track requires manual binding in this UE build: " + str(exc))
 
+    try:
+        sequence_actor = spawn(unreal.LevelSequenceActor, unreal.Vector(0, 0, 0),
+                               label="INTRO_AutoPlaySequence")
+        if sequence_actor:
+            sequence_actor.set_editor_property("sequence", sequence)
+            sequence_actor.set_editor_property("bAutoPlay", True)
+            log("Level Sequence Actor configured for auto-play.")
+    except Exception as exc:
+        log("Auto-play setup failed: " + str(exc))
+
     unreal.EditorLevelLibrary.save_current_level()
     unreal.EditorAssetLibrary.save_loaded_asset(sequence)
     log("Created level: " + MAP_PATH)
     log("Created sequence: " + SEQUENCE_PATH)
-    log("Title, subtitle and Ridagames credit have staggered scale reveals.")
-    log("Opening fade and final fade-to-black are included where supported by this UE build.")
-    log("Open LS_BLACKOUT_Intro in Sequencer and preview. Geometry is a blockout; replace it with final art.")
+    log("UNREAL ENGINE credit, BLACKOUT title and Ridagames credit are animated.")
+    log("Opening/ending fades, red/cyan signal bursts and generated original ambience are included where supported.")
+    log("The intro map is configured as the project's startup map.")
+    log("Open LS_BLACKOUT_Intro in Sequencer and preview. Corridor geometry is still a blockout.")
 
 
 def main():
