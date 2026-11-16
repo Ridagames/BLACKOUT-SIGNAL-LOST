@@ -1,34 +1,39 @@
 # BLACKOUT: SIGNAL LOST — Unreal Engine 5
 
-This branch contains the isolated UE5 authoring project and the automated opening cinematic. The PS4/OpenOrbis branch remains separate.
+Dedicated UE5 authoring branch for the opening cinematic. The OpenOrbis/PS4 work remains isolated on its own branches.
 
 ## Project layout
 
 - `BLACKOUT-UE5.uproject`: UE 5.4 project descriptor.
-- `Config/DefaultEngine.ini`: sets `/Game/Maps/L_Intro` as editor and game startup map.
-- `Content/Python/create_blackout_intro.py`: creates the intro level, Level Sequence, original generated ambience and auto-play actor inside Unreal Editor.
+- `Config/DefaultEngine.ini`: startup map points to `/Game/Maps/L_Intro`.
+- `Content/Python/create_blackout_intro.py`: full editor-side generator for the environment, PBR materials, cinematic camera, animated titles, lighting, audio and Level Sequence.
 - `UE5/INTRO_SEQUENCE_PLAN.md`: timeline and creative direction.
+- `UE5/ASSET_CATALOG.md`: generated asset inventory and intended use.
 
-## Build the intro assets inside Unreal Editor
+## Generate the cinematic and its resources
 
-1. Open `BLACKOUT-UE5.uproject` with Unreal Engine 5.4.
-2. Enable **Python Editor Script Plugin** and **Editor Scripting Utilities**, then restart if requested.
-3. Run `Content/Python/create_blackout_intro.py` using **Tools > Execute Python Script**.
-4. The script creates `/Game/Maps/L_Intro`, `/Game/Cinematics/LS_BLACKOUT_Intro` and imports its generated sound into `/Game/Audio/SW_BLACKOUT_Intro`.
-5. Open the level and preview the Level Sequence. The sequence actor is configured for auto-play; if the installed UE 5.4 patch rejects the auto-play property or camera binding, correct that property/binding in the editor and save.
+1. Open `BLACKOUT-UE5.uproject` in Unreal Engine 5.4 on a Windows/Linux workstation with the matching engine build.
+2. Confirm **Python Editor Script Plugin** and **Editor Scripting Utilities** are enabled.
+3. In Unreal Editor, run `Content/Python/create_blackout_intro.py` using **Tools → Execute Python Script**.
+4. The script creates the map `/Game/Maps/L_Intro`, sequence `/Game/Cinematics/LS_BLACKOUT_Intro`, material assets under `/Game/Materials`, and imports its generated original stereo WAV into `/Game/Audio/SW_BLACKOUT_Intro`.
+5. Open the Level Sequence in Sequencer, check the camera cut/audio/autoplay tracks, then render a review movie with Movie Render Queue.
 
-## Cinematic contents
+The script is designed to build the whole first-pass scene in one run. It uses engine primitive meshes arranged into a detailed industrial corridor, with generated PBR materials and a large set of environment props; it does not depend on downloading external art packs.
 
-- 24 seconds at 24 fps (576 frames), with a smooth-key interpolation attempt and a slow forward CineCamera dolly.
-- Industrial corridor blockout, cold point lights and atmospheric height fog.
-- Opening and ending camera fades where the engine exposes the fade channel.
-- Animated `UNREAL ENGINE` text credit, `BLACKOUT`, `SIGNAL LOST`, and `ÉDITÉ PAR RIDAGAMES`.
-- Brief offset red/cyan signal-interference text bursts.
-- A procedurally generated, original 24-second ambience WAV: low industrial drone, radio-static bursts, a metallic impact and fade-out. It is imported and attached to the sequence when the UE audio scripting API accepts the track.
-- The intro map is configured as the project's default startup map and contains a Level Sequence Actor set to auto-play.
+## Cinematic specification
 
-## Important status
+- 27 seconds, 24 fps, 16:9 framing.
+- Cold industrial horror corridor: structural frames, recessed wall panels, access doors, cable trays, ceiling pipes, floor drains/grates, generator housings, warning posts, terminal, dust motes and layered industrial fixtures.
+- Generated PBR materials: concrete, painted steel, brushed metal, oxidized metal, hazard yellow, cyan emitters, red alarms and cold white emitters.
+- CineCamera forward dolly, manual focus, shallow depth-of-field intent, camera-cut track, opening/ending fade track.
+- Animated studio credit, BLACKOUT title, SIGNAL LOST subtitle and Ridagames production credit, plus short red/cyan interference flashes.
+- Cold point-light pools, red alarm lights, atmospheric height fog and cinematic post-process settings where exposed by the installed UE patch.
+- Original 27-second stereo ambience generated locally by the script: low industrial drone, machinery harmonics, radio-static bursts, reverse swell, metallic impact and fade-out.
 
-This is a **complete first-pass scripted intro sequence**, not a finished AAA cinematic. The corridor still uses basic engine geometry; it needs final authored environment meshes, materials, high-quality particle work, a true rendered glitch/compositing pass, final sound mastering and a real transition to the main menu. The script has not been executed in Unreal Editor in this environment, so its UE 5.4 API calls, generated assets, camera cut, audio track and playback must still be validated in the editor. No rendered movie or PS4 build has been produced here.
+## Honest validation status
 
-The UE5 authoring project is separate from the OpenOrbis PS4 homebrew code. UE5 does not become PS4-compatible merely by adding OpenOrbis libraries; a substantial engine/platform adaptation and a compatible build toolchain are still required. Console packaging also requires authorized platform access where applicable.
+The updated automation source is committed, but it has **not** been executed in Unreal Editor in this environment. Therefore no generated `.umap`/`.uasset` files, rendered movie, verified audio playback, or successful PS4 build can be claimed yet. Unreal's Python API differs slightly between engine patches; the script logs guarded API failures, but camera binding, material graph compilation, Sequencer playback and render output must be checked in the actual UE 5.4 editor.
+
+This is a detailed procedural first-pass art build, not hand-modelled AAA asset production: primitive-based architecture and props are generated by the script. The opening currently fades to black at the end; a real menu handoff must be wired once the final menu map exists.
+
+UE5 does not become PS4-compatible merely by adding OpenOrbis libraries. A PS4 engine port requires platform-specific engine integration and the appropriate authorized toolchain/access. This UE5 cinematic branch does not modify the PS4/OpenOrbis branches.
