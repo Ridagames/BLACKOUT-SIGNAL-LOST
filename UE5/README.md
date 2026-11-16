@@ -22,9 +22,10 @@ This branch contains the isolated UE5 authoring project and the opening-cinemati
 - A long industrial corridor blockout with floor, ceiling, wall ribs and an end wall.
 - Cold practical point lights and atmospheric height fog.
 - A Cine Camera with a 24 fps, 24-second forward dolly.
+- Opening fade from black (0–2 s) and final fade to black (21–24 s), where supported by the UE version.
 - Sequenced scale reveals for `BLACKOUT`, `SIGNAL LOST`, and `ÉDITÉ PAR RIDAGAMES` (staggered between seconds 11 and 19).
 
-This is a **first playable editor scene/blockout**, not a finished AAA cinematic. The generated geometry uses Unreal's basic cube mesh; final environment art, authored materials, animated title/glitch treatment, original audio, and the menu transition remain to be produced and previewed in the editor. No rendered result has been tested in this environment.
+This is a **first editor-generated cinematic blockout**, not a finished AAA cinematic. The generated geometry uses Unreal's basic cube mesh; final environment art, authored materials, a dedicated signal-glitch effect, original audio and the actual main-menu handoff remain to be produced and previewed in the editor. The fade track prepares a fade-to-black ending but does not itself load the menu. No rendered result has been tested in this environment.
 
 ## Platform note
 
