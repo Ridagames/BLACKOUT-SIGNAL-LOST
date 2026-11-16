@@ -4,15 +4,24 @@ Target: 24 seconds, 16:9, 24 fps. Mood: oppressive industrial survival horror.
 
 | Time | Picture | Sound |
 |---|---|---|
-| 00:00–00:03 | Near-black frame; cold light and drifting haze emerge. | Original low electrical drone, distant metal impact. |
-| 00:03–00:08 | Slow camera dolly into a long industrial corridor. | Sub-bass texture and distant machinery. |
-| 00:08–00:12 | A brief signal interruption/glitch accent; image drops toward black. | Short original radio burst, then a beat of silence. |
-| 00:12–00:17 | `BLACKOUT` title resolves, then `SIGNAL LOST`. | Deep original cinematic impact and metallic decay. |
-| 00:17–00:21 | `ÉDITÉ PAR RIDAGAMES` appears. | Restrained rising texture. |
-| 00:21–00:24 | Fade to black, ready for the main-menu transition. | Drone fades away. |
+| 00:00–00:02 | Black frame fades into a cold industrial corridor. | Original low industrial drone fades in. |
+| 00:02–00:07 | Short studio/engine credit, camera begins its slow forward dolly. | Drone and distant machine harmonics. |
+| 00:07–00:11 | Red/cyan signal echoes flicker in short bursts. | Original radio-static bursts. |
+| 00:11–00:16 | BLACKOUT title resolves, followed by SIGNAL LOST. | Low metallic impact and sustained drone. |
+| 00:16–00:21 | ÉDITÉ PAR RIDAGAMES appears and holds. | Drone continues, slowly receding. |
+| 00:21–00:24 | Fade to black, ready for the next game state. | Original ambience fades out. |
 
-## Current implementation
+## Implemented by the editor automation
 
-The editor script creates a corridor blockout, cold practical lights, height fog, a Cine Camera, a 24 fps Level Sequence and staggered scale reveals for the title, subtitle and Ridagames credit. It is intended to be run inside Unreal Editor 5.4. This is not yet the final cinematic: the signal glitch, true opacity fades, authored materials, dust particles, original audio and menu transition still need a dedicated art/audio pass.
+The UE 5.4 Python script builds the corridor blockout, cold practical lights, atmospheric height fog, CineCamera, Level Sequence, animated studio/title/credit text, short red/cyan signal-interference text bursts and opening/ending fade keys where supported. It generates an original 24-second WAV ambience (industrial drone, radio-static bursts, metallic impact) and attempts to import it and attach it to the sequence. The generated intro map is configured as the project's startup map and a Level Sequence Actor is set to auto-play.
 
-Use original or properly licensed sound and typography. If displaying Epic's Unreal Engine logo, use official artwork according to Epic's branding rules; do not recreate or distort the logo.
+## Still required before calling it final
+
+- Execute the script in Unreal Editor 5.4 and fix any version-specific Python API issues.
+- Preview the camera cut, keyframe interpolation, fade track and audio playback; render a review movie.
+- Replace the basic cube corridor with final authored environment art and materials.
+- Add polished Niagara dust, volumetric lighting and a true post-process signal-glitch effect.
+- Master and mix final original music and sound effects.
+- Build the actual main-menu map and implement a reliable transition from the final fade into that menu.
+
+The current source is a complete first-pass cinematic automation, not a verified rendered result. The UE5 branch remains isolated from the OpenOrbis PS4 branch.
