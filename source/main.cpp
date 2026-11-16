@@ -3,6 +3,7 @@
 #include <cstdint>
 #include <atomic>
 #include <thread>
+#include <sys/time.h>
 #include <orbis/libkernel.h>
 #include <orbis/Pad.h>
 #include <orbis/UserService.h>
@@ -12,12 +13,13 @@
 static const int SCREEN_W = 1920;
 static const int SCREEN_H = 1080;
 
-enum MenuPage { PAGE_MAIN, PAGE_NEW_GAME, PAGE_CONTINUE, PAGE_OPTIONS, PAGE_INTRO };
+enum MenuPage { PAGE_SPLASH, PAGE_MAIN, PAGE_NEW_GAME, PAGE_CONTINUE, PAGE_OPTIONS, PAGE_INTRO };
 
 static bool vibrationEnabled = true;
 static int selected = 0;
 static int difficulty = 1;
-static MenuPage page = PAGE_MAIN;
+static MenuPage page = PAGE_SPLASH;
+static unsigned long long splashStartMs = 0;
 static unsigned int previousButtons = 0;
 static int lastPadReadResult = -999;
 static int lastPadButtons = 0;
@@ -165,6 +167,59 @@ static void drawIntro(Scene2D &scene)
     drawText(scene, "ROND  RETOUR AU MENU", 116, 970, 2, {205, 205, 194});
 }
 
+static unsigned long long currentTimeMs()
+{
+    timeval tv = {};
+    gettimeofday(&tv, nullptr);
+    return (unsigned long long)tv.tv_sec * 1000ull +
+           (unsigned long long)tv.tv_usec / 1000ull;
+}
+
+// Original Ridagames opening ident, composed in the PS4 GPU overlay.
+static void drawSplash(Scene2D &scene, unsigned long long elapsedMs, int frameId)
+{
+    scene.DrawRectangle(0, 0, SCREEN_W, SCREEN_H, {2, 4, 6});
+    for (int y = 24; y < SCREEN_H; y += 72)
+        scene.DrawRectangle(0, y, SCREEN_W, 1, {9, 14, 17});
+    for (int i = 0; i < 34; ++i) {
+        int x = (i * 173 + (int)(elapsedMs / 19) * (i % 3 + 1)) % SCREEN_W;
+        int y = (i * 97 + (int)(elapsedMs / 31) * (i % 2 + 1)) % SCREEN_H;
+        int size = (i % 4 == 0) ? 4 : 2;
+        scene.DrawRectangle(x, y, size, size, {48, 55, 55});
+    }
+    int sweepX = (int)((elapsedMs * 2ull) % (unsigned long long)(SCREEN_W + 240)) - 120;
+    scene.DrawRectangle(sweepX, 0, 3, SCREEN_H, {72, 24, 20});
+    scene.DrawRectangle(sweepX + 5, 0, 1, SCREEN_H, {34, 18, 17});
+
+    if (elapsedMs >= 900 && elapsedMs < 5200) {
+        drawTextShadow(scene, "RIDAGAMES", 650, 405, 7, {226, 226, 218});
+        scene.DrawRectangle(650, 490, 620, 3, {190, 58, 43});
+        if (elapsedMs >= 2600)
+            drawText(scene, "EDITE PAR RIDAGAMES", 765, 535, 3, {174, 180, 178});
+    }
+    if (elapsedMs >= 5200 && elapsedMs < 9000) {
+        drawText(scene, "POWERED BY", 820, 390, 2, {135, 146, 147});
+        drawTextShadow(scene, "UNREAL ENGINE", 710, 455, 5, {226, 229, 224});
+        scene.DrawRectangle(710, 520, 500, 2, {83, 91, 91});
+        if ((frameId % 17) < 3) {
+            int glitchY = 430 + (frameId * 13) % 150;
+            scene.DrawRectangle(690, glitchY, 540, 2, {125, 44, 35});
+        }
+    }
+    if (elapsedMs >= 9000) {
+        drawTextShadow(scene, "BLACKOUT", 720, 390, 8, {235, 232, 220});
+        drawTextShadow(scene, "SIGNAL LOST", 765, 475, 4, {206, 66, 49});
+        scene.DrawRectangle(720, 555, 500, 2, {173, 54, 41});
+        if ((frameId % 11) < 2) {
+            int glitchY = 380 + (frameId * 19) % 190;
+            scene.DrawRectangle(690, glitchY, 550, 2, {94, 38, 34});
+        }
+        drawText(scene, "NEXUS-9  //  SIGNAL TERMINATED", 740, 620, 2, {132, 143, 141});
+    }
+    if (elapsedMs > 14500)
+        drawText(scene, "APPUYEZ SUR UNE TOUCHE POUR PASSER", 650, 970, 2, {115, 126, 124});
+}
+
 #if DIAGNOSTIC_BUILD
 static void drawDiagnostics(Scene2D &scene)
 {
@@ -210,7 +265,8 @@ static void render(Scene2D &scene, int frameId)
 
     // Le menu est dessine dans une texture de composition; la scene 3D,
     // l'eclairage et le depth buffer sont calcules par le GPU GNM PS4.
-    if (page == PAGE_MAIN) drawMain(scene);
+    if (page == PAGE_SPLASH) drawSplash(scene, currentTimeMs() - splashStartMs, frameId);
+    else if (page == PAGE_MAIN) drawMain(scene);
     else if (page == PAGE_NEW_GAME) drawNewGame(scene);
     else if (page == PAGE_CONTINUE) drawContinue(scene);
     else if (page == PAGE_OPTIONS) drawOptions(scene);
@@ -315,7 +371,8 @@ static void applyVibration(int pad)
 
 int main()
 {
-    write_status("BLACKOUT_MENU_STARTING");
+    splashStartMs = currentTimeMs();
+    write_status("BLACKOUT_OPENING_SEQUENCE_STARTING");
 
     Scene2D scene(SCREEN_W, SCREEN_H, 4);
     const bool overlayReady = scene.InitOverlay();
@@ -385,7 +442,13 @@ int main()
         // Si le GPU echoue, le thread de manette reste actif afin que le systeme
         // ne soit pas bloque; la fermeture se fait avec la touche PS.
 
-        if (page == PAGE_MAIN) {
+        if (page == PAGE_SPLASH) {
+            if (pressed || currentTimeMs() - splashStartMs >= 18000ull) {
+                page = PAGE_MAIN;
+                selected = 0;
+                write_status("BLACKOUT_OPENING_SEQUENCE_COMPLETE");
+            }
+        } else if (page == PAGE_MAIN) {
             if (pressed & ORBIS_PAD_BUTTON_UP) { selected = (selected + 2) % 3; changed = true; }
             if (pressed & ORBIS_PAD_BUTTON_DOWN) { selected = (selected + 1) % 3; changed = true; }
             if (pressed & ORBIS_PAD_BUTTON_CROSS) {
