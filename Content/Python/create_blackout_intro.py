@@ -273,11 +273,42 @@ def create_sequence():
     seq.set_playback_end(END_FRAME)
     return seq
 
+
+def import_source_meshes():
+    """Import authored OBJ source meshes from Content/SourceMeshes into /Game/Meshes."""
+    folder("/Game/Meshes")
+    source_dir = os.path.join(unreal.Paths.project_content_dir(), "SourceMeshes")
+    names = ["SM_BLK_Generator", "SM_BLK_WallTerminal",
+             "SM_BLK_CeilingLamp", "SM_BLK_DoorFrame", "SM_BLK_FloorGrate"]
+    result = {}
+    for name in names:
+        obj_path = os.path.join(source_dir, name + ".obj")
+        if not os.path.isfile(obj_path):
+            log("Optional source mesh missing, using procedural fallback: " + obj_path)
+            continue
+        try:
+            task = unreal.AssetImportTask()
+            safe_set(task, "filename", obj_path)
+            safe_set(task, "destination_path", "/Game/Meshes")
+            safe_set(task, "destination_name", name)
+            safe_set(task, "automated", True)
+            safe_set(task, "replace_existing", True)
+            safe_set(task, "save", True)
+            unreal.AssetToolsHelpers.get_asset_tools().import_asset_tasks([task])
+            imported = asset("/Game/Meshes/" + name)
+            if imported:
+                result[name] = imported
+                log("Imported authored OBJ mesh: " + name)
+        except Exception as exc:
+            log("OBJ import fallback for " + name + ": " + str(exc))
+    return result
+
 def create_environment():
     folder("/Game/Materials")
     cube = primitive("/Engine/BasicShapes/Cube")
     cyl = primitive("/Engine/BasicShapes/Cylinder")
     sph = primitive("/Engine/BasicShapes/Sphere")
+    source_meshes = import_source_meshes()
     concrete = material("M_BLK_Concrete", (0.075,0.09,0.105), .88, .08)
     dark = material("M_BLK_PaintedSteel", (0.018,0.027,0.035), .52, .62)
     metal = material("M_BLK_BrushedMetal", (0.16,0.19,0.21), .34, .82)
@@ -322,31 +353,61 @@ def create_environment():
     for side in [-1,1]:
         y=side*265
         box(cube,"DrainChannel_%s"%side,(1100,y,-5),(11.4,.13,.025),dark)
-        for i in range(36):
-            x=65+i*59
-            box(cube,"DrainGrate_%s_%02d"%(side,i),(x,y,-1),(.025,.12,.018),metal)
+        grate_mesh = source_meshes.get("SM_BLK_FloorGrate")
+        if grate_mesh:
+            for i in range(17):
+                x=65+i*130
+                mesh_actor(grate_mesh, "AuthoredFloorGrate_%s_%02d"%(side,i),
+                           (x,y,-1), (1,1,1), metal)
+        else:
+            for i in range(36):
+                x=65+i*59
+                box(cube,"DrainGrate_%s_%02d"%(side,i),(x,y,-1),(.025,.12,.018),metal)
     # Industrial machines and generator housings along both sides.
     for i in range(6):
         x=300+i*310
         for side in [-1,1]:
             y=side*245
             box(cube,"MachineBase_%s_%02d"%(side,i),(x,y,55),(1.05,.55,.5),dark)
-            box(cube,"MachineBody_%s_%02d"%(side,i),(x,y,155),(.82,.43,1.55),metal)
+            generator = source_meshes.get("SM_BLK_Generator")
+            if generator:
+                mesh_actor(generator, "DetailedGenerator_%s_%02d"%(side,i),
+                           (x,y,0), (1,1,1), metal)
+            else:
+                box(cube,"MachineBody_%s_%02d"%(side,i),(x,y,155),(.82,.43,1.55),metal)
             box(cube,"MachineFront_%s_%02d"%(side,i),(x,y-side*23,155),(.62,.025,1.15),dark)
             for n in range(4):
                 box(cube,"MachineVent_%s_%02d_%02d"%(side,i,n),
                     (x-30+n*20,y-side*40,185),(.018,.01,.62),rust)
             sphere(sph,"MachineStatus_%s_%02d"%(side,i),(x+22,y-side*43,235),(.055,.025,.055),red if i%3==0 else cyan)
+    # Authored industrial access-door frames, imported from the OBJ source library.
+    door_mesh = source_meshes.get("SM_BLK_DoorFrame")
+    if door_mesh:
+        for x in [430, 1030, 1630]:
+            for side in [-1, 1]:
+                mesh_actor(door_mesh, "AuthoredDoorFrame_%s_%s"%(x,side),
+                           (x,side*300,0), (1,1,1), rust,
+                           unreal.Rotator(0,90 if side < 0 else -90,0))
     # Warning bollards, overhead lamps and emergency beacons.
     for i in range(8):
         x=190+i*270
         cylinder(cyl,"LampStem_%02d"%i,(x,0,433),(.07,.07,.22),dark)
-        box(cube,"LampHousing_%02d"%i,(x,0,405),(.5,.42,.09),metal)
-        box(cube,"LampLens_%02d"%i,(x,0,398),(.36,.28,.025),white)
+        lamp_mesh = source_meshes.get("SM_BLK_CeilingLamp")
+        if lamp_mesh:
+            mesh_actor(lamp_mesh, "AuthoredCeilingLamp_%02d"%i,
+                       (x,0,405), (1,1,1), metal)
+        else:
+            box(cube,"LampHousing_%02d"%i,(x,0,405),(.5,.42,.09),metal)
+            box(cube,"LampLens_%02d"%i,(x,0,398),(.36,.28,.025),white)
         for side in [-1,1]:
             cylinder(cyl,"SafetyPost_%s_%02d"%(side,i),(x,side*280,58),(.08,.08,.58),yellow)
     # Terminal at the end of the corridor gives the camera a focal point.
-    box(cube,"SignalTerminal",(2050,0,185),(.75,.62,1.9),dark)
+    terminal_mesh = source_meshes.get("SM_BLK_WallTerminal")
+    if terminal_mesh:
+        mesh_actor(terminal_mesh, "AuthoredSignalTerminal",
+                   (2050,0,0), (1,1,1), dark)
+    else:
+        box(cube,"SignalTerminal",(2050,0,185),(.75,.62,1.9),dark)
     box(cube,"TerminalScreen",(2010,-2,240),(.025,.42,.68),cyan,unreal.Rotator(0,0,0))
     text_actor("NO SIGNAL","TerminalText",(1990,-2,240),unreal.Rotator(0,90,0),24,unreal.Color(90,210,235,255))
     # Wet floor reflections are suggested by dark metallic inset plates.
