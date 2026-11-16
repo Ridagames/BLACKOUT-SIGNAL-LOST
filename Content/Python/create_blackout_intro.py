@@ -386,8 +386,7 @@ def create_environment():
         for x in [430, 1030, 1630]:
             for side in [-1, 1]:
                 mesh_actor(door_mesh, "AuthoredDoorFrame_%s_%s"%(x,side),
-                           (x,side*300,0), (1,1,1), rust,
-                           unreal.Rotator(0,90 if side < 0 else -90,0))
+                           (x,side*300,0), (1,1,1), rust)
     # Warning bollards, overhead lamps and emergency beacons.
     for i in range(8):
         x=190+i*270
