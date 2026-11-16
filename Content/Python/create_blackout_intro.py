@@ -203,7 +203,7 @@ def animate_text_scale(sequence, actor, keyframes, label):
 def add_fade_track(sequence):
     """Fade from black at the opening and back to black at the end."""
     try:
-        track = sequence.add_track(unreal.MovieSceneFadeTrack)
+        track = sequence.add_master_track(unreal.MovieSceneFadeTrack)
         section = track.add_section()
         section.set_range(0, FPS * DURATION)
         channels = section.get_channels()
@@ -364,7 +364,7 @@ def build_level():
     if camera:
         camera_binding = add_camera_animation(sequence, camera)
         try:
-            cut_track = sequence.add_track(unreal.MovieSceneCameraCutTrack)
+            cut_track = sequence.add_master_track(unreal.MovieSceneCameraCutTrack)
             cut_section = cut_track.add_section()
             cut_section.set_range(0, FPS * DURATION)
             cut_section.set_camera_binding_id(
