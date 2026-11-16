@@ -87,6 +87,30 @@ def add_camera_animation(sequence, camera):
     return binding
 
 
+def animate_text_scale(sequence, actor, keyframes, label):
+    """Animate a text actor's scale for a deliberate cinematic reveal."""
+    if not actor:
+        return
+    binding = sequence.add_possessable(actor)
+    track = binding.add_track(unreal.MovieScene3DTransformTrack)
+    section = track.add_section()
+    section.set_range(0, FPS * DURATION)
+    channels = section.get_channels()
+
+    # Keep position/rotation constant while animating scale XYZ.
+    transform = actor.get_actor_transform()
+    location = transform.translation
+    rotation = transform.rotation.rotator()
+    for index, value in enumerate((location.x, location.y, location.z)):
+        channels[index].add_key(unreal.FrameNumber(0), value)
+    for index, value in enumerate((rotation.roll, rotation.pitch, rotation.yaw), start=3):
+        channels[index].add_key(unreal.FrameNumber(0), value)
+    for frame, scale in keyframes:
+        for index in range(3):
+            channels[index + 6].add_key(unreal.FrameNumber(frame), scale)
+    log("Animated reveal: " + label)
+
+
 def create_sequence():
     ensure_folder("/Game/Cinematics")
     tools = unreal.AssetToolsHelpers.get_asset_tools()
@@ -135,15 +159,15 @@ def build_level():
     # Distant end wall and a readable title/credit reveal.
     add_box(cube, "INTRO_EndWall", unreal.Vector(1740, 0, 190),
             unreal.Vector(0.18, 3.0, 3.8))
-    add_text("BLACKOUT", "INTRO_Title_BLACKOUT",
-             unreal.Vector(1580, 0, 245), unreal.Rotator(0, 180, 0),
-             78.0, unreal.Color(220, 232, 240, 255))
-    add_text("SIGNAL LOST", "INTRO_Title_Subtitle",
-             unreal.Vector(1575, 0, 165), unreal.Rotator(0, 180, 0),
-             28.0, unreal.Color(130, 165, 185, 255))
-    add_text("ÉDITÉ PAR RIDAGAMES", "INTRO_Credit",
-             unreal.Vector(1570, 0, 95), unreal.Rotator(0, 180, 0),
-             18.0, unreal.Color(190, 198, 205, 255))
+    title = add_text("BLACKOUT", "INTRO_Title_BLACKOUT",
+                     unreal.Vector(1580, 0, 245), unreal.Rotator(0, 180, 0),
+                     78.0, unreal.Color(220, 232, 240, 255))
+    subtitle = add_text("SIGNAL LOST", "INTRO_Title_Subtitle",
+                        unreal.Vector(1575, 0, 165), unreal.Rotator(0, 180, 0),
+                        28.0, unreal.Color(130, 165, 185, 255))
+    credit = add_text("ÉDITÉ PAR RIDAGAMES", "INTRO_Credit",
+                      unreal.Vector(1570, 0, 95), unreal.Rotator(0, 180, 0),
+                      18.0, unreal.Color(190, 198, 205, 255))
 
     # Cold practical pools of light down the corridor.
     for index in range(5):
@@ -177,6 +201,21 @@ def build_level():
             cine.set_editor_property("current_aperture", 2.8)
 
     sequence = create_sequence()
+    # Staggered title reveal: scale eases from near-zero to full size,
+    # with long holds so each line remains readable.
+    animate_text_scale(sequence, title, [
+        (11 * FPS, 0.02), (12 * FPS, 0.15),
+        (14 * FPS, 1.0), (24 * FPS, 1.0)
+    ], "BLACKOUT")
+    animate_text_scale(sequence, subtitle, [
+        (12 * FPS, 0.02), (13 * FPS, 0.2),
+        (15 * FPS, 1.0), (24 * FPS, 1.0)
+    ], "SIGNAL LOST")
+    animate_text_scale(sequence, credit, [
+        (16 * FPS, 0.02), (17 * FPS, 0.2),
+        (19 * FPS, 1.0), (24 * FPS, 1.0)
+    ], "ÉDITÉ PAR RIDAGAMES")
+
     if camera:
         camera_binding = add_camera_animation(sequence, camera)
         try:
@@ -193,6 +232,7 @@ def build_level():
     unreal.EditorAssetLibrary.save_loaded_asset(sequence)
     log("Created level: " + MAP_PATH)
     log("Created sequence: " + SEQUENCE_PATH)
+    log("Title, subtitle and Ridagames credit have staggered scale reveals.")
     log("Open LS_BLACKOUT_Intro in Sequencer and preview. Geometry is a blockout; replace it with final art.")
 
 
