@@ -111,6 +111,30 @@ def animate_text_scale(sequence, actor, keyframes, label):
     log("Animated reveal: " + label)
 
 
+def add_fade_track(sequence):
+    """Fade from black at the opening and back to black at the end."""
+    try:
+        track = sequence.add_track(unreal.MovieSceneFadeTrack)
+        section = track.add_section()
+        section.set_range(0, FPS * DURATION)
+        channels = section.get_channels()
+        if not channels:
+            raise RuntimeError("Fade track exposes no opacity channel.")
+        opacity = channels[0]
+        # 1 = black, 0 = fully visible in Unreal's camera fade track.
+        fade_keys = [
+            (0, 1.0),
+            (2 * FPS, 0.0),
+            (21 * FPS, 0.0),
+            (24 * FPS, 1.0),
+        ]
+        for frame, value in fade_keys:
+            opacity.add_key(unreal.FrameNumber(frame), value)
+        log("Added opening and ending fade-to-black.")
+    except Exception as exc:
+        log("Fade track could not be generated automatically: " + str(exc))
+
+
 def create_sequence():
     ensure_folder("/Game/Cinematics")
     tools = unreal.AssetToolsHelpers.get_asset_tools()
@@ -201,6 +225,9 @@ def build_level():
             cine.set_editor_property("current_aperture", 2.8)
 
     sequence = create_sequence()
+    # Fade in from black and fade out to prepare the main-menu transition.
+    add_fade_track(sequence)
+
     # Staggered title reveal: scale eases from near-zero to full size,
     # with long holds so each line remains readable.
     animate_text_scale(sequence, title, [
@@ -233,6 +260,7 @@ def build_level():
     log("Created level: " + MAP_PATH)
     log("Created sequence: " + SEQUENCE_PATH)
     log("Title, subtitle and Ridagames credit have staggered scale reveals.")
+    log("Opening fade and final fade-to-black are included where supported by this UE build.")
     log("Open LS_BLACKOUT_Intro in Sequencer and preview. Geometry is a blockout; replace it with final art.")
 
 
