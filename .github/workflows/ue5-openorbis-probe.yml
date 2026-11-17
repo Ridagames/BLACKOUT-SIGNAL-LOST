@@ -13,28 +13,38 @@ permissions:
 
 jobs:
   compile-probe:
-    runs-on: ubuntu-latest
-    timeout-minutes: 20
-    container:
-      image: openorbisofficial/toolchain:latest
-      options: --user root
+    runs-on: ubuntu-20.04
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
 
-      - name: Verify OpenOrbis SDK
+      - name: Install the toolchain prerequisites
         run: |
-          set -eu
-          test -f /lib/OpenOrbisSDK/link.x
-          test -f /lib/OpenOrbisSDK/include/orbis/libkernel.h
-          test -f /lib/OpenOrbisSDK/lib/crt1.o
-          clang++ --version
-          ld.lld --version
+          set -eux
+          sudo apt-get update
+          sudo apt-get install -y clang-12 lld-12 libicu66 libssl1.1 curl tar
+          clang++-12 --version
+          ld.lld-12 --version
 
-      - name: Compile and link minimal C++ probe
+      - name: Install the official OpenOrbis 0.5.2 release
         run: |
-          set -eu
+          set -eux
+          SDK="$HOME/OpenOrbisSDK"
+          mkdir -p "$SDK"
+          curl --fail --location --retry 3 \
+            https://github.com/OpenOrbis/OpenOrbis-PS4-Toolchain/releases/download/v0.5.2/v0.5.2.tar.gz \
+            -o /tmp/openorbis.tar.gz
+          tar -xzf /tmp/openorbis.tar.gz -C "$SDK"
+          test -f "$SDK/link.x"
+          test -f "$SDK/include/orbis/libkernel.h"
+          test -f "$SDK/lib/crt1.o"
+          echo "OO_PS4_TOOLCHAIN=$SDK" >> "$GITHUB_ENV"
+
+      - name: Compile and link the C++ probe
+        run: |
+          set -eux
           make -C research/ue5-openorbis clean
-          make -C research/ue5-openorbis OO_PS4_TOOLCHAIN=/lib/OpenOrbisSDK
+          make -C research/ue5-openorbis OO_PS4_TOOLCHAIN="$OO_PS4_TOOLCHAIN"
           file research/ue5-openorbis/build/ue5_orbis_probe.elf
           readelf -h research/ue5-openorbis/build/ue5_orbis_probe.elf
           sha256sum research/ue5-openorbis/build/ue5_orbis_probe.elf
