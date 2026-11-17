@@ -1,0 +1,47 @@
+name: UE5 OpenOrbis — toolchain probe
+
+on:
+  push:
+    branches: ["research/ue5-openorbis"]
+    paths:
+      - "research/ue5-openorbis/**"
+      - ".github/workflows/ue5-openorbis-probe.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  compile-probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    container:
+      image: openorbisofficial/toolchain:latest
+      options: --user root
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Verify OpenOrbis SDK
+        run: |
+          set -eu
+          test -f /lib/OpenOrbisSDK/link.x
+          test -f /lib/OpenOrbisSDK/include/orbis/libkernel.h
+          test -f /lib/OpenOrbisSDK/lib/crt1.o
+          clang++ --version
+          ld.lld --version
+
+      - name: Compile and link minimal C++ probe
+        run: |
+          set -eu
+          make -C research/ue5-openorbis clean
+          make -C research/ue5-openorbis OO_PS4_TOOLCHAIN=/lib/OpenOrbisSDK
+          file research/ue5-openorbis/build/ue5_orbis_probe.elf
+          readelf -h research/ue5-openorbis/build/ue5_orbis_probe.elf
+          sha256sum research/ue5-openorbis/build/ue5_orbis_probe.elf
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ue5-openorbis-toolchain-probe
+          path: research/ue5-openorbis/build/ue5_orbis_probe.elf
+          if-no-files-found: error
+          retention-days: 14
