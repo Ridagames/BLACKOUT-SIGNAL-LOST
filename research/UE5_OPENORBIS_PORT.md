@@ -34,7 +34,7 @@ Un portage ne consiste pas à convertir un projet Unreal en PKG. Il faut rendre 
 | Packaging | exécutable Orbis, modules requis, SFO et PKG |
 | Outils | remplacement ou adaptation des outils Editor/Build qui supposent Windows, Visual Studio ou les SDK propriétaires |
 
-Le RHI est le verrou majeur : sans backend graphique opérationnel, le moteur ne peut pas rendre une scène 3D. Un simple écran de démarrage ou un PKG valide ne prouverait pas le portage.
+Le RHI est le verrou majeur : sans backend graphique opérationnel, le moteur ne peut pas rendre une scène 3D. Une piste concrète existe toutefois dans OpenOrbis 0.5.2 : l'exemple officiel Piglet utilise EGL et OpenGL ES 2.0 (GLES2) pour initialiser un contexte GPU et présenter des images. Ce n'est pas encore un RHI Unreal. Voir `research/ue5-openorbis/PIGLET_RENDERING.md`.
 
 ## 3. Stratégie de travail
 
