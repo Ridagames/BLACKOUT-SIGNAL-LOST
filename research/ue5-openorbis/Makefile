@@ -1,6 +1,6 @@
 OO_PS4_TOOLCHAIN ?= /lib/OpenOrbisSDK
-CC := clang++
-LD := ld.lld
+CXX := clang++-12
+LD := ld.lld-12
 OUT := build
 TARGET := $(OUT)/ue5_orbis_probe.elf
 OBJ := $(OUT)/probe.o
@@ -20,7 +20,7 @@ $(OUT):
 	mkdir -p $(OUT)
 
 $(OBJ): probe.cpp | $(OUT)
-	$(CC) $(CXXFLAGS) -o $@ $<
+	$(CXX) $(CXXFLAGS) -o $@ $<
 
 $(TARGET): $(OBJ)
 	$(LD) $(OBJ) -o $@ $(LDFLAGS)
